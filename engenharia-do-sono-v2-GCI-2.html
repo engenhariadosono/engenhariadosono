@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engenharia do Sono — O Gatilho Circadiano Invertido</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #060810;
+  --surface:  #0b0d1c;
+  --card:     #101324;
+  --border:   #1c2040;
+  --cyan:     #00e5d4;
+  --cyan2:    rgba(0,229,212,.12);
+  --blue:     #4b8ef5;
+  --gold:     #f5c842;
+  --gold2:    rgba(245,200,66,.12);
+  --red:      #ff4060;
+  --red2:     rgba(255,64,96,.1);
+  --text:     #e6eaf5;
+  --muted:    #7080a8;
+  --white:    #ffffff;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:16px;line-height:1.7;overflow-x:hidden}
+h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
+a{color:inherit;text-decoration:none}
+.container{max-width:760px;margin:0 auto;padding:0 20px}
+.container--wide{max-width:940px;margin:0 auto;padding:0 20px}
+.tag{display:inline-block;border:1px solid var(--cyan);background:var(--cyan2);color:var(--cyan);font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 14px;border-radius:999px;margin-bottom:20px}
+.tag--gold{border-color:var(--gold);background:var(--gold2);color:var(--gold)}
+.tag--red{border-color:var(--red);background:var(--red2);color:var(--red)}
+.cyan{color:var(--cyan)} .gold{color:var(--gold)} .red{color:var(--red)} .muted{color:var(--muted)}
+section{padding:72px 0}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent)}
+
+/* ── TOPBAR ── */
+.topbar{background:linear-gradient(90deg,#1a0a00,#2a1200,#1a0a00);border-bottom:1px solid rgba(245,200,66,.3);padding:11px 20px;text-align:center;font-size:.82rem;font-weight:600;color:var(--gold);letter-spacing:.03em}
+.topbar strong{color:#fff}
+
+/* ── TIMER BAR ── */
+.timer-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;text-align:center}
+.timer-bar p{font-size:.82rem;color:var(--muted);margin-bottom:8px}
+.timer-digits{display:flex;justify-content:center;align-items:center;gap:8px}
+.td{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-family:'Sora',sans-serif;font-size:1.5rem;font-weight:800;color:var(--cyan);min-width:52px;text-align:center}
+.td-sep{font-size:1.4rem;font-weight:800;color:var(--muted);margin-bottom:4px}
+.td-label{font-size:.62rem;color:var(--muted);text-align:center;margin-top:4px;letter-spacing:.08em;text-transform:uppercase}
+
+/* ── CTA BUTTON ── */
+.cta-btn{display:block;background:linear-gradient(135deg,var(--cyan) 0%,var(--blue) 100%);color:#06080f;font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;padding:20px 40px;border-radius:14px;border:none;cursor:pointer;text-align:center;letter-spacing:.01em;box-shadow:0 0 40px rgba(0,229,212,.3);transition:transform .15s,box-shadow .15s;width:100%;max-width:480px;margin:0 auto}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(0,229,212,.45)}
+.cta-sub{font-size:.78rem;color:var(--muted);text-align:center;margin-top:10px}
+
+/* ── HERO ── */
+.hero{padding:80px 0 64px;position:relative;overflow:hidden;text-align:center}
+.hero::before{content:'';position:absolute;top:-150px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(0,229,212,.08),transparent 65%);pointer-events:none}
+.hero-eyebrow{font-size:.8rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:20px}
+.hero h1{font-size:clamp(1.9rem,5vw,3.1rem);font-weight:900;margin-bottom:20px}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{font-size:1.1rem;color:var(--muted);max-width:580px;margin:0 auto 16px;line-height:1.75}
+.hero-price-hint{font-size:.9rem;color:var(--text);margin-bottom:36px}
+.hero-price-hint s{color:var(--muted)}
+.hero-price-hint strong{color:var(--cyan);font-size:1.1rem}
+
+/* ── GCI BOX ── */
+.gci-box{background:linear-gradient(135deg,#050d18,#0a1428);border:2px solid var(--cyan);border-radius:16px;padding:32px 28px;margin:40px 0;box-shadow:0 0 60px rgba(0,229,212,.1);position:relative;overflow:hidden;text-align:left}
+.gci-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--blue))}
+.gci-label{font-size:.7rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
+.gci-box h3{font-size:1.25rem;font-weight:800;margin-bottom:14px}
+.gci-phases{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.gci-phase{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:rgba(0,229,212,.04);border:1px solid rgba(0,229,212,.15);border-radius:10px}
+.gci-phase-num{background:var(--cyan);color:#06080f;font-family:'Sora',sans-serif;font-weight:800;font-size:.75rem;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.gci-phase strong{font-size:.95rem;display:block;margin-bottom:3px}
+.gci-phase p{font-size:.85rem;color:var(--muted);line-height:1.5}
+
+/* ── SLOTS ── */
+.slots-bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;text-align:center;margin:24px 0}
+.slots-track{height:8px;background:var(--border);border-radius:999px;margin:10px 0;overflow:hidden}
+.slots-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--blue));border-radius:999px;width:88%}
+.slots-text{font-size:.82rem;color:var(--muted)}
+.slots-text strong{color:var(--red)}
+
+/* ── PAIN ── */
+.pain{background:var(--surface)}
+.pain h2{font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:8px;text-align:center}
+.pain-lead{text-align:center;color:var(--muted);margin-bottom:36px}
+.fail-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.fail-list li{display:flex;align-items:center;gap:12px;background:var(--red2);border:1px solid rgba(255,64,96,.2);border-radius:10px;padding:14px 18px;font-size:.95rem}
+.fail-list li .x{color:var(--red);font-size:1.1rem;font-weight:900;flex-shrink:0}
+.pain-coda{background:var(--card);border-left:3px solid var(--cyan);border-radius:0 10px 10px 0;padding:18px 20px;margin-top:28px;font-size:.97rem;line-height:1.7}
+
+/* ── HOW GCI WORKS ── */
+.how{text-align:center}
+.how h2{font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:14px}
+.how-lead{color:var(--muted);margin-bottom:48px;max-width:560px;margin-left:auto;margin-right:auto}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;text-align:left}
+.step-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 22px;transition:border-color .2s;position:relative;overflow:hidden}
+.step-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--blue))}
+.step-card:hover{border-color:var(--cyan)}
+.step-num{font-family:'Sora',sans-serif;font-size:2.5rem;font-weight:900;color:rgba(0,229,212,.15);line-height:1;margin-bottom:12px}
+.step-card h4{font-size:1rem;font-weight:700;margin-bottom:8px}
+.step-card p{font-size:.88rem;color:var(--muted);line-height:1.6}
+.vs-box{background:linear-gradient(135deg,var(--surface),var(--card));border:1px solid var(--border);border-radius:16px;padding:32px;margin-top:48px}
+.vs-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center}
+.vs-col h4{font-size:.92rem;font-weight:700;margin-bottom:12px}
+.vs-item{font-size:.85rem;padding:8px 0;border-bottom:1px solid var(--border);color:var(--muted)}
+.vs-item:last-child{border-bottom:none}
+.vs-no .vs-item{text-decoration:line-through;opacity:.5}
+.vs-yes .vs-item{color:var(--text)}
+.vs-sep{font-size:1.4rem;font-weight:900;color:var(--cyan);text-align:center}
+
+/* ── WHAT YOU GET ── */
+.what{background:var(--surface)}
+.what h2{font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:40px;text-align:center}
+.main-product{background:var(--card);border:2px solid var(--cyan);border-radius:16px;padding:28px;margin-bottom:24px;display:flex;gap:20px;align-items:flex-start}
+.main-product-icon{font-size:3rem;flex-shrink:0}
+.main-product h3{font-size:1.1rem;font-weight:800;margin-bottom:8px}
+.main-product p{font-size:.9rem;color:var(--muted)}
+.bonus-section-label{font-family:'Sora',sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:28px 0 16px;text-align:center}
+.bonus-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.bonus-card{background:linear-gradient(145deg,var(--card),#0c1020);border:1px solid rgba(245,200,66,.3);border-radius:14px;padding:24px;position:relative;overflow:hidden}
+.bonus-card::before{content:'BÔNUS';position:absolute;top:12px;right:-26px;background:var(--gold);color:#06080f;font-size:.6rem;font-weight:800;letter-spacing:.1em;padding:3px 40px;transform:rotate(45deg)}
+.bonus-icon{font-size:1.8rem;margin-bottom:12px}
+.bonus-card h4{font-size:.95rem;font-weight:700;margin-bottom:6px}
+.bonus-card p{font-size:.83rem;color:var(--muted);line-height:1.5}
+.bonus-val{margin-top:12px;font-size:.78rem;color:var(--gold);font-weight:600}
+.total-value{background:linear-gradient(135deg,#0a1428,#06080f);border:1px solid var(--cyan);border-radius:14px;padding:22px;margin-top:28px;text-align:center}
+.total-value p{font-size:.9rem;color:var(--muted);margin-bottom:6px}
+.total-value strong{font-family:'Sora',sans-serif;font-size:1.6rem;color:var(--cyan)}
+
+/* ── TESTIMONIALS ── */
+.testi{text-align:center}
+.testi h2{font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:40px}
+.testi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;text-align:left}
+.testi-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;position:relative}
+.testi-card::before{content:'\201C';position:absolute;top:12px;right:18px;font-size:3rem;color:rgba(0,229,212,.15);font-family:Georgia,serif;line-height:1}
+.testi-stars{color:var(--gold);margin-bottom:10px;font-size:.95rem}
+.testi-gci-tag{display:inline-block;background:var(--cyan2);border:1px solid rgba(0,229,212,.3);color:var(--cyan);font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 10px;border-radius:999px;margin-bottom:10px}
+.testi-text{font-size:.9rem;color:var(--text);line-height:1.7;margin-bottom:16px}
+.testi-author{display:flex;align-items:center;gap:10px}
+.testi-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--blue));display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-weight:800;font-size:.82rem;color:#06080f;flex-shrink:0}
+.testi-name{font-weight:600;font-size:.88rem}
+.testi-role{font-size:.76rem;color:var(--muted)}
+
+/* ── NOT FOR YOU ── */
+.notforyou{background:var(--surface)}
+.notforyou h2{font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:8px;text-align:center}
+.notforyou-lead{text-align:center;color:var(--muted);margin-bottom:36px}
+.nfy-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.nfy-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.nfy-card h4{font-size:.92rem;font-weight:700;margin-bottom:8px}
+.nfy-card p{font-size:.85rem;color:var(--muted);line-height:1.55}
+.nfy-card.yes{border-color:rgba(0,229,212,.3)}
+.nfy-card.no{border-color:rgba(255,64,96,.25)}
+.nfy-icon{font-size:1.3rem;margin-bottom:8px}
+
+/* ── GUARANTEE ── */
+.guarantee{background:linear-gradient(135deg,var(--bg),#060d1e)}
+.guarantee-box{display:flex;gap:28px;align-items:center;background:var(--card);border:2px solid var(--cyan);border-radius:20px;padding:36px;box-shadow:0 0 50px rgba(0,229,212,.1)}
+.guarantee-shield{font-size:4.5rem;flex-shrink:0;filter:drop-shadow(0 0 16px var(--cyan))}
+.guarantee h3{font-size:1.4rem;margin-bottom:10px}
+.guarantee p{font-size:.93rem;color:var(--muted);line-height:1.7}
+
+/* ── PRICING ── */
+.pricing{text-align:center}
+.pricing h2{font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:8px}
+.pricing-lead{color:var(--muted);margin-bottom:48px}
+.price-card{max-width:460px;margin:0 auto;background:var(--card);border:2px solid var(--cyan);border-radius:20px;padding:44px 36px;box-shadow:0 0 70px rgba(0,229,212,.12);position:relative;overflow:hidden}
+.price-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top,rgba(0,229,212,.05),transparent 65%);pointer-events:none}
+.price-badge{display:inline-block;background:var(--red);color:#fff;font-size:.72rem;font-weight:800;letter-spacing:.1em;padding:5px 18px;border-radius:999px;margin-bottom:20px}
+.price-was{font-size:.95rem;color:var(--muted);text-decoration:line-through;margin-bottom:4px}
+.price-main{font-family:'Sora',sans-serif;font-weight:900;font-size:4rem;color:var(--cyan);line-height:1;margin-bottom:4px}
+.price-main span{font-size:1.7rem;vertical-align:super}
+.price-caption{font-size:.8rem;color:var(--muted);margin-bottom:30px}
+.price-includes{text-align:left;margin-bottom:30px}
+.price-item{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);font-size:.9rem}
+.price-item:last-child{border-bottom:none}
+.pi-check{color:var(--cyan);flex-shrink:0;margin-top:2px;font-weight:700}
+.scarcity-note{background:rgba(255,64,96,.08);border:1px solid rgba(255,64,96,.25);border-radius:10px;padding:12px 16px;font-size:.82rem;color:var(--red);font-weight:600;margin-bottom:24px;text-align:center}
+
+/* ── FAQ ── */
+.faq{background:var(--surface)}
+.faq h2{font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:36px;text-align:center}
+.faq-item{border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.faq-q{width:100%;background:var(--card);border:none;color:var(--text);font-family:'Sora',sans-serif;font-size:.95rem;font-weight:600;text-align:left;padding:18px 22px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.faq-q .arr{color:var(--cyan);transition:transform .25s;flex-shrink:0}
+.faq-item.open .faq-q .arr{transform:rotate(180deg)}
+.faq-a{display:none;padding:0 22px 18px;font-size:.88rem;color:var(--muted);line-height:1.7;background:var(--card)}
+.faq-item.open .faq-a{display:block}
+
+/* ── FINAL CTA ── */
+.final{text-align:center;padding:100px 0;background:linear-gradient(180deg,var(--bg),#060e28)}
+.final h2{font-size:clamp(1.7rem,4vw,2.6rem);margin-bottom:14px}
+.final p{color:var(--muted);margin-bottom:48px;font-size:1.05rem;max-width:500px;margin-left:auto;margin-right:auto}
+
+/* ── FOOTER ── */
+footer{background:var(--surface);border-top:1px solid var(--border);text-align:center;padding:30px 20px;font-size:.76rem;color:var(--muted)}
+footer a{color:var(--muted);opacity:.7}
+
+/* ── STICKY ── */
+.sticky{position:fixed;bottom:0;left:0;right:0;background:rgba(6,8,16,.95);border-top:1px solid var(--border);padding:12px 20px;display:flex;justify-content:center;align-items:center;gap:18px;z-index:99;backdrop-filter:blur(10px);flex-wrap:wrap}
+.sticky-info .s-label{font-size:.72rem;color:var(--muted)}
+.sticky-info .s-price{font-family:'Sora',sans-serif;font-weight:800;font-size:1.3rem;color:var(--cyan)}
+.sticky-info .s-was{font-size:.76rem;color:var(--muted);text-decoration:line-through}
+.sticky-btn{background:linear-gradient(135deg,var(--cyan),var(--blue));color:#06080f;font-family:'Sora',sans-serif;font-weight:800;font-size:.9rem;padding:12px 26px;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;text-decoration:none;box-shadow:0 0 20px rgba(0,229,212,.25)}
+
+/* ── ANALYSIS BOX ── */
+.analysis{background:linear-gradient(135deg,#06080f,#0a0e20);border-top:2px solid var(--border);padding:64px 0}
+.analysis h2{font-size:1.6rem;margin-bottom:24px;text-align:center}
+.analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.analysis-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px}
+.analysis-card h4{font-size:.95rem;font-weight:700;margin-bottom:10px}
+.analysis-card p{font-size:.85rem;color:var(--muted);line-height:1.65}
+.analysis-card.pro{border-color:rgba(0,229,212,.3)}
+.analysis-card.con{border-color:rgba(255,64,96,.25)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  .guarantee-box{flex-direction:column;padding:24px}
+  .nfy-grid{grid-template-columns:1fr}
+  .vs-grid{grid-template-columns:1fr;gap:0}
+  .vs-sep{display:none}
+  .price-main{font-size:3.2rem}
+  .analysis-grid{grid-template-columns:1fr}
+  .steps-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  ⚠️ <strong>ATENÇÃO:</strong> Esta oferta com bônus é válida apenas para os primeiros <strong>50 compradores desta semana</strong>. Restam <strong id="slots-top">6 vagas</strong>.
+</div>
+
+<!-- TIMER BAR -->
+<div class="timer-bar">
+  <p>⏳ Preço promocional encerra em:</p>
+  <div class="timer-digits">
+    <div><div class="td" id="t-h">00</div><div class="td-label">horas</div></div>
+    <div class="td-sep">:</div>
+    <div><div class="td" id="t-m">00</div><div class="td-label">min</div></div>
+    <div class="td-sep">:</div>
+    <div><div class="td" id="t-s">00</div><div class="td-label">seg</div></div>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <p class="hero-eyebrow">Para quem já tentou de tudo e continua acordando destruído</p>
+    <div class="tag">Descoberta da Cronobiologia</div>
+    <h1>
+      Pare de tentar forçar o sono.<br>
+      Aprenda a <em>ativar o Gatilho<br>Circadiano Invertido.</em>
+    </h1>
+    <p class="hero-sub">
+      O método que usa 20 minutos de <strong>vigília controlada</strong> para fazer seu cérebro <em>buscar o sono profundo por conta própria</em> — sem remédios, sem suplementos, sem força de vontade.
+    </p>
+    <p class="hero-price-hint">
+      <s>R$ 147,00</s> &nbsp;→&nbsp; <strong>R$ 67,00</strong> · acesso imediato · garantia 60 dias
+    </p>
+    <a href="#pricing" class="cta-btn">Quero aplicar o GCI hoje →</a>
+    <p class="cta-sub">🔒 Pagamento seguro · Acesso imediato · Garantia incondicional de 60 dias</p>
+
+    <!-- GCI BOX -->
+    <div class="gci-box" style="margin-top:52px">
+      <div class="gci-label">// o mecanismo proprietário</div>
+      <h3>O que é o Gatilho Circadiano Invertido (GCI)?</h3>
+      <p style="font-size:.95rem;color:var(--muted);margin-bottom:6px">
+        Enquanto todo método tenta <em>relaxar você à força</em>, o GCI faz o contrário: ativa um estado de <strong style="color:var(--text)">vigília controlada por 20 minutos</strong> antes de dormir — criando uma "demanda de sono" que o cérebro não consegue ignorar.
+      </p>
+      <p style="font-size:.9rem;color:var(--muted)">Baseado em cronobiologia e no conceito de pressão homeostática do sono.</p>
+      <div class="gci-phases">
+        <div class="gci-phase">
+          <div class="gci-phase-num">1</div>
+          <div>
+            <strong>Sinal de Alerta Falso</strong>
+            <p>Você ativa levemente o sistema de vigília com estímulos precisos. O cérebro entende que "ainda não é hora de dormir".</p>
+          </div>
+        </div>
+        <div class="gci-phase">
+          <div class="gci-phase-num">2</div>
+          <div>
+            <strong>Descompressão Forçada</strong>
+            <p>Com a vigília ativa, você aplica a técnica de descompressão neural. O contraste cria uma pressão de sono real e intensa.</p>
+          </div>
+        </div>
+        <div class="gci-phase">
+          <div class="gci-phase-num">3</div>
+          <div>
+            <strong>Reentrada no Sono</strong>
+            <p>O cérebro, por demanda própria, entra em sono profundo (N3) muito mais rápido e com maior duração do que pelo método convencional.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLOTS -->
+    <div class="slots-bar">
+      <div class="slots-track"><div class="slots-fill"></div></div>
+      <p class="slots-text"><strong class="red">44 de 50 vagas preenchidas</strong> esta semana — restam apenas 6 com bônus inclusos.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PAIN -->
+<section class="pain">
+  <div class="container">
+    <div class="tag tag--red" style="display:block;text-align:center">O que você já tentou</div>
+    <h2>Você não está com insônia.<br>Você está com o <span class="red">método errado.</span></h2>
+    <p class="pain-lead">Cada item dessa lista que você já tentou foi tempo e dinheiro perdido — não por culpa sua.</p>
+    <ul class="fail-list">
+      <li><span class="x">✕</span> Dormir mais cedo (e ficar deitado acordado por horas)</li>
+      <li><span class="x">✕</span> Chá de camomila, melatonina, magnésio, remédio para dormir</li>
+      <li><span class="x">✕</span> Cortar a tela 1 hora antes de dormir</li>
+      <li><span class="x">✕</span> Meditação guiada, sons binaurais, ASMR</li>
+      <li><span class="x">✕</span> Contar ovelhas, respirar fundo, "tentar relaxar"</li>
+      <li><span class="x">✕</span> Exercício intenso à noite "para cansar o corpo"</li>
+    </ul>
+    <div class="pain-coda">
+      <strong>Todos esses métodos atacam o sintoma.</strong> Nenhum trata a causa: seu ritmo circadiano está dessincronizado — e nenhum chá do mundo vai resincronizar o que é bioquímica.
+    </div>
+  </div>
+</section>
+
+<!-- HOW GCI WORKS -->
+<section class="how">
+  <div class="container">
+    <div class="tag" style="display:block;text-align:center">Por que o GCI é diferente</div>
+    <h2>A ciência que nenhum blog de saúde<br>te explicou direito.</h2>
+    <p class="how-lead">
+      O GCI inverte a lógica convencional do sono. Em vez de tentar <em>forçar o relaxamento</em>, ele cria uma <strong>demanda biológica real</strong> — e o cérebro responde por conta própria.
+    </p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <h4>Pressão Homeostática</h4>
+        <p>Seu cérebro acumula adenosina durante o dia. O GCI amplifica esse acúmulo nos 20 minutos certos para que a "dívida de sono" seja irresistível.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <h4>Contraste Neural</h4>
+        <p>O cérebro aprende pela diferença, não pela uniformidade. O GCI cria um contraste vigília-descanso que o relaxamento passivo nunca consegue.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <h4>Janela de Reentrada</h4>
+        <p>Existe uma janela de 12 a 18 minutos após a fase 2 onde o sono N3 (sono profundo) é maximizado. O protocolo foi desenhado para entrar exatamente nela.</p>
+      </div>
+    </div>
+
+    <div class="vs-box">
+      <div class="vs-grid">
+        <div class="vs-col vs-no">
+          <h4 style="color:var(--red)">✕ Método convencional</h4>
+          <div class="vs-item">Tentar relaxar forçado</div>
+          <div class="vs-item">Depender de suplementos</div>
+          <div class="vs-item">Regras rígidas de horário</div>
+          <div class="vs-item">Resultados inconsistentes</div>
+          <div class="vs-item">Requer força de vontade</div>
+        </div>
+        <div class="vs-sep">vs</div>
+        <div class="vs-col vs-yes">
+          <h4 style="color:var(--cyan)">✓ Protocolo GCI</h4>
+          <div class="vs-item">Criar demanda biológica real</div>
+          <div class="vs-item">Zero suplemento necessário</div>
+          <div class="vs-item">20 minutos, qualquer horário</div>
+          <div class="vs-item">Reproduzível toda noite</div>
+          <div class="vs-item">O cérebro faz o trabalho</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- WHAT YOU GET -->
+<section class="what">
+  <div class="container">
+    <div class="tag tag--gold" style="display:block;text-align:center">O que você recebe</div>
+    <h2>Tudo que você precisa para<br>aplicar o <span class="cyan">GCI ainda hoje à noite.</span></h2>
+
+    <div class="main-product">
+      <div class="main-product-icon">🧠</div>
+      <div>
+        <h3>Engenharia do Sono — Guia Completo com Protocolo GCI</h3>
+        <p>O guia em PDF com todo o sistema: cronobiologia aplicada, as 3 fases do GCI, o plano de 7 dias e os ajustes ambientais que multiplicam o efeito. Linguagem direta, sem termos médicos, leitura possível em 45 minutos.</p>
+      </div>
+    </div>
+
+    <div class="bonus-section-label">+ 3 bônus exclusivos (somente para os primeiros 50)</div>
+    <div class="bonus-grid">
+      <div class="bonus-card">
+        <div class="bonus-icon">🎧</div>
+        <h4>Áudio Guiado do GCI — 20 min</h4>
+        <p>Narração conduzindo você pelas 3 fases do GCI em tempo real. Você segue o áudio e o protocolo acontece automaticamente.</p>
+        <div class="bonus-val">Valor: R$47 · GRÁTIS</div>
+      </div>
+      <div class="bonus-card">
+        <div class="bonus-icon">📅</div>
+        <h4>Planner Semanal de Ritmo Circadiano</h4>
+        <p>Planilha para mapear seus horários de luz, alimentação e atividade — os 3 sincronizadores do relógio biológico.</p>
+        <div class="bonus-val">Valor: R$27 · GRÁTIS</div>
+      </div>
+      <div class="bonus-card">
+        <div class="bonus-icon">🚫</div>
+        <h4>Checklist: Gatilhos Proibidos Noturnos</h4>
+        <p>Lista dos 11 comportamentos que destroem o GCI antes de você começar — incluindo 3 que parecem inofensivos mas sabotam tudo.</p>
+        <div class="bonus-val">Valor: R$19 · GRÁTIS</div>
+      </div>
+    </div>
+
+    <div class="total-value">
+      <p>Valor total do pacote completo</p>
+      <strong>R$ 240,00 → Hoje por R$ 67</strong>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testi">
+  <div class="container">
+    <div class="tag" style="display:block;text-align:center">Resultados reais</div>
+    <h2>Quem aplicou o <span class="cyan">GCI</span> fala.</h2>
+    <div class="testi-grid">
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-gci-tag">Protocolo GCI</div>
+        <p class="testi-text">"Na primeira noite que apliquei as 3 fases do GCI não acreditei. Fiquei esperando não funcionar — como tudo que já tentei. Adormecer levou menos de 15 minutos. Acordei sem aquele peso no corpo que carregava há 2 anos."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">FM</div>
+          <div>
+            <div class="testi-name">Fernando M.</div>
+            <div class="testi-role">Gestor comercial · SP</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-gci-tag">Protocolo GCI</div>
+        <p class="testi-text">"O que me convenceu foi entender o porquê. A parte da pressão homeostática explicou minha vida inteira. Sempre quis relaxar para dormir — mas o problema era exatamente esse. O GCI virou minha lógica de cabeça pra baixo."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">RC</div>
+          <div>
+            <div class="testi-name">Ricardo C.</div>
+            <div class="testi-role">Engenheiro · MG</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-gci-tag">Protocolo GCI</div>
+        <p class="testi-text">"Uso o áudio bônus todo dia. É literalmente só apertar play e seguir. Na terceira semana usando o GCI parei de acordar às 3h da manhã — coisa que me perseguia há 4 anos. Não tem comparação com nada que eu já tentei."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">AL</div>
+          <div>
+            <div class="testi-name">André L.</div>
+            <div class="testi-role">Empreendedor · RJ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- NOT FOR YOU -->
+<section class="notforyou">
+  <div class="container">
+    <div class="tag tag--red" style="display:block;text-align:center">Leia antes de comprar</div>
+    <h2>Esse protocolo <span class="red">não é para todo mundo.</span></h2>
+    <p class="notforyou-lead">Seja honesto consigo mesmo antes de comprar.</p>
+    <div class="nfy-grid">
+      <div class="nfy-card yes">
+        <div class="nfy-icon">✅</div>
+        <h4 style="color:var(--cyan)">É para você se:</h4>
+        <p>Você quer entender o mecanismo, não apenas seguir uma lista. Está disposto a aplicar o protocolo por 7 dias consecutivos. Quer uma solução permanente, não um paliativo.</p>
+      </div>
+      <div class="nfy-card no">
+        <div class="nfy-icon">🚫</div>
+        <h4 style="color:var(--red)">Não é para você se:</h4>
+        <p>Você quer uma pílula mágica sem nenhuma mudança. Espera resultado sem aplicar o protocolo. Prefere continuar dependendo de remédios sem questionar a causa.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GUARANTEE -->
+<section class="guarantee">
+  <div class="container">
+    <div class="guarantee-box">
+      <div class="guarantee-shield">🛡️</div>
+      <div>
+        <h3>Garantia Incondicional de <span class="cyan">60 Dias</span></h3>
+        <p>Aplique o protocolo GCI por 60 dias. Se você não sentir diferença real na qualidade do seu sono, me manda um e-mail e devolvo <strong>100% do valor</strong> — sem burocracia, sem justificativa, sem perguntas. Sessenta dias é tempo suficiente para o protocolo funcionar ou para você concluir que não é para você. De qualquer forma, o risco é <strong>zero</strong>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="tag" style="display:block;text-align:center">Oferta desta semana</div>
+    <h2>Uma decisão. <span class="cyan">Uma noite diferente.</span></h2>
+    <p class="pricing-lead">Sem assinatura. Sem mensalidade. Acesso imediato e vitalício.</p>
+
+    <div class="price-card">
+      <div class="price-badge">🔥 54% OFF — ÚLTIMAS VAGAS</div>
+      <div class="price-was">De R$ 147,00</div>
+      <div class="price-main"><span>R$</span>67</div>
+      <div class="price-caption">pagamento único · acesso imediato · para sempre</div>
+
+      <div class="scarcity-note">
+        ⚠️ Bônus disponíveis apenas para os primeiros 50 compradores. <span id="slots-price">6 vagas restantes.</span>
+      </div>
+
+      <div class="price-includes">
+        <div class="price-item"><span class="pi-check">✓</span><span>Guia Engenharia do Sono + Protocolo GCI completo</span></div>
+        <div class="price-item"><span class="pi-check">✓</span><span>Plano de 7 dias detalhado (dia a dia)</span></div>
+        <div class="price-item"><span class="pi-check" style="color:var(--gold)">✓</span><span>🎧 Áudio Guiado do GCI — 20 min <span style="color:var(--gold);font-size:.8rem">(bônus)</span></span></div>
+        <div class="price-item"><span class="pi-check" style="color:var(--gold)">✓</span><span>📅 Planner Semanal de Ritmo Circadiano <span style="color:var(--gold);font-size:.8rem">(bônus)</span></span></div>
+        <div class="price-item"><span class="pi-check" style="color:var(--gold)">✓</span><span>🚫 Checklist Gatilhos Proibidos Noturnos <span style="color:var(--gold);font-size:.8rem">(bônus)</span></span></div>
+        <div class="price-item"><span class="pi-check">✓</span><span>Acesso vitalício + atualizações gratuitas</span></div>
+        <div class="price-item"><span class="pi-check">✓</span><span>Garantia incondicional de 60 dias</span></div>
+      </div>
+
+      <a href="#" class="cta-btn">Quero aplicar o GCI hoje →</a>
+      <p class="cta-sub">🔒 Pix, Cartão ou Boleto · Pagamento 100% seguro via Kiwify</p>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+  <div class="container">
+    <h2>Perguntas frequentes</h2>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">O GCI funciona na primeira noite? <span class="arr">▼</span></button>
+      <div class="faq-a">A maioria relata perceber diferença nas primeiras 3 noites. O efeito pleno — sono contínuo sem acordar no meio — costuma aparecer entre o 5º e o 10º dia de aplicação consistente. O áudio bônus facilita muito a curva de aprendizado.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Preciso parar de tomar remédio para dormir? <span class="arr">▼</span></button>
+      <div class="faq-a">Não. O guia não substitui orientação médica e não pede para você suspender medicação. O protocolo GCI pode ser aplicado em paralelo. Se você usa medicação prescrita, converse com seu médico sobre qualquer mudança.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Funciona para quem tem insônia crônica há anos? <span class="arr">▼</span></button>
+      <div class="faq-a">Sim — e especialmente para quem já tentou de tudo sem resultado. Insônia crônica quase sempre está ligada a dessincronização do ritmo circadiano, exatamente o que o GCI ataca. Pode levar um pouco mais de tempo, mas o mecanismo é o mesmo.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Como recebo o material? <span class="arr">▼</span></button>
+      <div class="faq-a">Imediatamente após o pagamento você recebe um e-mail com os links de acesso. O guia principal está em PDF, o áudio em MP3 e o planner em formato editável. Tudo funciona em celular, tablet e computador.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Por que R$67 e não R$29? O preço não era mais barato? <span class="arr">▼</span></button>
+      <div class="faq-a">A oferta anterior não incluía os 3 bônus — especialmente o áudio guiado do GCI, que tem valor isolado de R$47. O preço atual reflete o pacote completo. E a garantia de 60 dias cobre qualquer dúvida.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">E se eu não gostar? <span class="arr">▼</span></button>
+      <div class="faq-a">60 dias de garantia incondicional. Manda um e-mail para contato@engenhariadosono.com.br e devolvo 100% do valor. Sem perguntas, sem burocracia.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final">
+  <div class="container">
+    <div class="tag" style="display:block;text-align:center">Última chamada</div>
+    <h2>Você pode passar mais uma semana<br><span style="color:var(--red)">acordando destruído.</span></h2>
+    <p>Ou você pode gastar R$67 hoje, aplicar o GCI ainda esta noite e descobrir o que é acordar realmente descansado.</p>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <a href="#pricing" class="cta-btn">Quero aplicar o GCI hoje →</a>
+      <p class="cta-sub">🛡️ Garantia 60 dias · 🔒 Pagamento seguro · ⚡ Acesso imediato</p>
+    </div>
+  </div>
+</section>
+
+<!-- ANALYSIS (explicação para o gestor) -->
+<section class="analysis">
+  <div class="container">
+    <div class="tag tag--gold" style="display:block;text-align:center">Para o gestor de tráfego</div>
+    <h2 style="text-align:center">Por que essa oferta converte mais</h2>
+    <div class="analysis-grid" style="margin-top:32px">
+      <div class="analysis-card con">
+        <h4 style="color:var(--red)">✕ Página anterior (R$29,90 · 0 vendas)</h4>
+        <p>Sem mecanismo único — era mais uma página de sono. Sem prova social. Sem escassez real. Preço baixo gerou desconfiança ("se é tão barato, não pode ser bom"). Sem bônus — oferta percebida como vazia. Sem urgência para comprar agora.</p>
+      </div>
+      <div class="analysis-card pro">
+        <h4 style="color:var(--cyan)">✓ Nova página — o que muda</h4>
+        <p><strong>Mecanismo proprietário (GCI):</strong> torna o produto único e indiscutível. <strong>Preço ancorado</strong> (R$147→R$67) aumenta valor percebido. <strong>Stack de bônus</strong> com valor atribuído justifica o preço. <strong>Escassez real</strong> (50 vagas) cria urgência. <strong>Garantia 60 dias</strong> elimina o risco. Timer ativa gatilho de urgência.</p>
+      </div>
+      <div class="analysis-card pro">
+        <h4 style="color:var(--cyan)">✓ Por que o mecanismo único é o mais importante</h4>
+        <p>O GCI diferencia o produto de todos os concorrentes numa categoria saturada. O comprador não compara mais preços — ele compra o mecanismo. "Encontrei o método que é diferente de tudo que já tentei" é o insight que converte. Produtos com mecanismo proprietário têm taxa de conversão 3-5x maior que genéricos.</p>
+      </div>
+      <div class="analysis-card pro">
+        <h4 style="color:var(--cyan)">✓ Matemática da nova oferta</h4>
+        <p>Se o custo/view se mantiver em R$0,22: 100 views = R$22 de custo. A 2% de conversão = 2 vendas × R$67 = R$134. ROAS = 6x. Com 3% (possível com mecanismo único): 3 vendas = R$201. ROAS = 9x. O aumento de preço mais que compensa qualquer queda na taxa de conversão.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>© 2026 Engenharia do Sono. Todos os direitos reservados.</p>
+  <p style="margin-top:6px">Produto digital em PDF. Resultados individuais podem variar. Não substitui orientação médica.</p>
+  <p style="margin-top:10px"><a href="#">Política de Privacidade</a> · <a href="#">Termos de Uso</a> · <a href="#">contato@engenhariadosono.com.br</a></p>
+</footer>
+
+<!-- STICKY -->
+<div class="sticky">
+  <div class="sticky-info">
+    <div class="s-label">Engenharia do Sono + 3 bônus</div>
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span class="s-was">R$147</span>
+      <span class="s-price">R$ 67</span>
+    </div>
+  </div>
+  <a href="#pricing" class="sticky-btn">Garantir meu acesso →</a>
+</div>
+
+<script>
+// ── COUNTDOWN TIMER ──
+function getOrSetDeadline() {
+  let d = localStorage.getItem('gci_deadline');
+  if (!d) {
+    const now = new Date();
+    now.setHours(now.getHours() + 23, now.getMinutes() + 59, now.getSeconds() + 59, 0);
+    d = now.getTime();
+    try { localStorage.setItem('gci_deadline', d); } catch(e){}
+  }
+  return parseInt(d);
+}
+
+const deadline = getOrSetDeadline();
+
+function updateTimer() {
+  const now = Date.now();
+  let diff = Math.max(0, deadline - now);
+  const h = Math.floor(diff / 3600000);
+  diff %= 3600000;
+  const m = Math.floor(diff / 60000);
+  diff %= 60000;
+  const s = Math.floor(diff / 1000);
+  document.getElementById('t-h').textContent = String(h).padStart(2,'0');
+  document.getElementById('t-m').textContent = String(m).padStart(2,'0');
+  document.getElementById('t-s').textContent = String(s).padStart(2,'0');
+}
+updateTimer();
+setInterval(updateTimer, 1000);
+
+// ── FAQ ──
+function toggleFaq(btn) {
+  btn.closest('.faq-item').classList.toggle('open');
+}
+
+// ── SCROLL ANIMATIONS ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.step-card,.bonus-card,.testi-card,.faq-item,.analysis-card,.gci-phase').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity .45s ease, transform .45s ease';
+  observer.observe(el);
+});
+
+// ── SMOOTH SCROLL ──
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const t = document.querySelector(a.getAttribute('href'));
+    if (t) { e.preventDefault(); t.scrollIntoView({ behavior:'smooth', block:'start' }); }
+  });
+});
+</script>
+</body>
+</html>
