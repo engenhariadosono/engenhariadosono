@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planilha Estoica · Crescimento & Liberdade</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --bg: #111113;
+  --surface: #1c1c1e;
+  --surface2: #26262a;
+  --surface3: #303034;
+  --gold: #c9a84c;
+  --gold-dim: #8a6e2e;
+  --text: #ebebf0;
+  --text2: #aeaeb2;
+  --text3: #636366;
+  --green: #32d74b;
+  --green-dim: #1a5c28;
+  --red: #ff453a;
+  --red-dim: #5c1a18;
+  --blue: #0a84ff;
+  --blue-dim: #0a3a6e;
+  --border: rgba(255,255,255,0.08);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; }
+
+/* NAV */
+.nav-header { background: rgba(17,17,19,0.97); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 58px; gap: 16px; }
+.nav-brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: var(--gold); letter-spacing: -0.3px; white-space: nowrap; }
+.nav-brand span { color: var(--text3); font-weight: 400; font-size: 12px; }
+.nav-tabs { display: flex; gap: 3px; }
+.nav-tab { background: none; border: none; color: var(--text3); font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.nav-tab:hover { color: var(--text2); background: var(--surface2); }
+.nav-tab.active { color: var(--gold); background: rgba(201,168,76,0.12); }
+.quote-ticker { font-size: 11px; color: var(--text3); font-style: italic; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* LAYOUT */
+.main { max-width: 1400px; margin: 0 auto; padding: 24px 24px 80px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* CARDS */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+/* KPI */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; position: relative; overflow: hidden; }
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.kpi-card.gold::before { background: var(--gold); }
+.kpi-card.green::before { background: var(--green); }
+.kpi-card.red::before { background: var(--red); }
+.kpi-card.blue::before { background: var(--blue); }
+.kpi-label { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+.kpi-value.gold { color: var(--gold); }
+.kpi-value.green { color: var(--green); }
+.kpi-value.red { color: var(--red); }
+.kpi-value.blue { color: var(--blue); }
+.kpi-sub { font-size: 11px; color: var(--text3); margin-top: 5px; }
+
+/* PROGRESS */
+.progress-wrap { background: var(--surface2); border-radius: 100px; height: 5px; overflow: hidden; margin-top: 8px; }
+.progress-bar { height: 100%; border-radius: 100px; transition: width 0.6s ease; }
+
+/* GRIDS */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+@media (max-width: 960px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } .quote-ticker { display: none; } }
+
+/* TABLES */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); border-bottom: 1px solid var(--border); }
+.data-table td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* FORMS */
+.form-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: flex-end; }
+.form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 110px; }
+.form-group label { font-size: 11px; color: var(--text3); font-weight: 500; }
+input, select { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; padding: 8px 10px; outline: none; transition: border-color 0.15s; width: 100%; }
+input:focus, select:focus { border-color: var(--gold); }
+select option { background: var(--surface2); }
+
+/* BUTTONS */
+.btn { border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 600; padding: 8px 16px; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--gold); color: #000; }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-ghost { background: var(--surface2); color: var(--text2); }
+.btn-ghost:hover { background: var(--surface3); }
+.btn-danger { background: none; color: var(--text3); padding: 3px 7px; font-size: 15px; border-radius: 5px; }
+.btn-danger:hover { background: var(--red-dim); color: var(--red); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* BADGES */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 100px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-gold { background: rgba(201,168,76,0.15); color: var(--gold); }
+.badge-blue { background: var(--blue-dim); color: var(--blue); }
+
+/* STOIC QUOTE CARD */
+.stoic-card { background: linear-gradient(135deg, rgba(201,168,76,0.07), rgba(201,168,76,0.02)); border: 1px solid rgba(201,168,76,0.18); border-radius: var(--radius); padding: 18px 24px 18px 32px; margin-bottom: 20px; position: relative; }
+.stoic-card::before { content: '"'; position: absolute; top: 4px; left: 12px; font-size: 56px; color: var(--gold); opacity: 0.12; font-family: Georgia, serif; line-height: 1; }
+.stoic-quote { font-size: 14px; font-style: italic; color: var(--text2); line-height: 1.7; }
+.stoic-author { font-size: 11px; color: var(--gold); font-weight: 700; margin-top: 6px; letter-spacing: 0.5px; }
+
+/* SECTION HEADER */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* TOGGLE */
+.toggle-group { display: flex; background: var(--surface2); border-radius: var(--radius-sm); padding: 3px; gap: 2px; }
+.toggle-btn { background: none; border: none; color: var(--text3); font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 5px; cursor: pointer; transition: all 0.15s; }
+.toggle-btn.active { background: var(--surface3); color: var(--text); }
+
+/* METER */
+.meter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.meter-label { font-size: 12px; color: var(--text2); min-width: 130px; }
+.meter-bar { flex: 1; background: var(--surface2); border-radius: 100px; height: 7px; overflow: hidden; }
+.meter-fill { height: 100%; border-radius: 100px; transition: width 0.5s ease; }
+.meter-val { font-size: 12px; font-variant-numeric: tabular-nums; min-width: 65px; text-align: right; color: var(--text2); }
+
+/* CIRCLE */
+.circle-indicator { display: flex; align-items: center; justify-content: center; flex-direction: column; width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--gold); font-size: 22px; font-weight: 800; color: var(--gold); flex-shrink: 0; }
+.circle-indicator small { font-size: 9px; font-weight: 500; color: var(--text3); }
+
+/* INFO BOX */
+.info-box { font-size: 12px; background: rgba(201,168,76,0.05); border: 1px solid rgba(201,168,76,0.15); border-radius: 8px; padding: 10px 14px; color: var(--text3); line-height: 1.6; margin-top: 10px; }
+.info-box strong { color: var(--gold); }
+
+/* EMPTY */
+.empty-state { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
+.empty-state .icon { font-size: 28px; margin-bottom: 8px; }
+
+/* COLORS */
+.hl-green { color: var(--green); font-weight: 600; }
+.hl-red { color: var(--red); font-weight: 600; }
+.hl-gold { color: var(--gold); font-weight: 600; }
+.hl-blue { color: var(--blue); font-weight: 600; }
+
+/* CHART */
+.chart-wrap { width: 100%; overflow: hidden; }
+.chart-wrap svg { width: 100%; height: auto; display: block; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ NAVIGATION ═══ -->
+<header class="nav-header">
+  <div class="nav-brand">⚖️ Planilha Estoica <span>Crescimento · Disciplina · Liberdade</span></div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active"  onclick="showSection('dashboard',this)">Dashboard</button>
+    <button class="nav-tab" onclick="showSection('orcamento',this)">Orçamento</button>
+    <button class="nav-tab" onclick="showSection('dividas',this)">Dívidas</button>
+    <button class="nav-tab" onclick="showSection('juros',this)">Juros Compostos</button>
+    <button class="nav-tab" onclick="showSection('metas',this)">Metas FIRE</button>
+  </nav>
+  <div class="quote-ticker" id="quoteTicker"></div>
+  <div id="syncStatus" style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">
+    <span id="syncDot" style="width:7px;height:7px;border-radius:50%;background:var(--text3);transition:background 0.4s,box-shadow 0.4s"></span>
+    <span id="syncLabel">local</span>
+  </div>
+</header>
+
+<main class="main">
+
+<!-- ══════════════════════════════════════════
+     DASHBOARD
+══════════════════════════════════════════ -->
+<section class="section active" id="s-dashboard">
+  <div class="stoic-card">
+    <div class="stoic-quote" id="stoicQuote">Riqueza não consiste em ter grandes posses, mas em ter poucas necessidades.</div>
+    <div class="stoic-author" id="stoicAuthor">— Epictetus</div>
+  </div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">Distribuição das Despesas</div>
+      <div id="dashBudgetBars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Saúde Financeira</div>
+      <div id="dashHealth"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Projeção do Patrimônio — 10 anos (taxa 12% a.a.)</div>
+    <div class="chart-wrap" id="dashProjectionChart"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     ORÇAMENTO
+══════════════════════════════════════════ -->
+<section class="section" id="s-orcamento">
+  <div class="section-header">
+    <h1 class="section-title">Orçamento Estoico</h1>
+  </div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <!-- Receitas -->
+    <div class="card">
+      <div class="card-title">Receitas <span class="hl-green" id="lblTotalReceitas">R$ 0</span></div>
+      <div class="form-row">
+        <div class="form-group"><label>Descrição</label><input type="text" id="recDesc" placeholder="Ex: Salário"></div>
+        <div class="form-group" style="max-width:140px"><label>Valor (R$)</label><input type="number" id="recVal" placeholder="0" min="0"></div>
+        <div class="form-group" style="max-width:72px"><label>&nbsp;</label><button class="btn btn-primary btn-sm" onclick="addReceita()">+ Add</button></div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Descrição</th><th class="num">Valor</th><th></th></tr></thead>
+        <tbody id="bodyReceitas"></tbody>
+      </table>
+    </div>
+    <!-- Despesas -->
+    <div class="card">
+      <div class="card-title">Despesas <span class="hl-red" id="lblTotalDespesas">R$ 0</span></div>
+      <div class="form-row">
+        <div class="form-group"><label>Descrição</label><input type="text" id="despDesc" placeholder="Ex: Aluguel"></div>
+        <div class="form-group" style="max-width:130px"><label>Categoria</label>
+          <select id="despCat">
+            <option value="Moradia">🏠 Moradia</option>
+            <option value="Alimentação">🍽️ Alimentação</option>
+            <option value="Transporte">🚗 Transporte</option>
+            <option value="Saúde">❤️ Saúde</option>
+            <option value="Educação">📚 Educação</option>
+            <option value="Lazer">🎯 Lazer</option>
+            <option value="Investimentos">📈 Investimentos</option>
+            <option value="Outros">📦 Outros</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width:130px"><label>Valor (R$)</label><input type="number" id="despVal" placeholder="0" min="0"></div>
+        <div class="form-group" style="max-width:72px"><label>&nbsp;</label><button class="btn btn-primary btn-sm" onclick="addDespesa()">+ Add</button></div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Descrição</th><th>Categoria</th><th class="num">Valor</th><th></th></tr></thead>
+        <tbody id="bodyDespesas"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Resumo · Regra 50/30/20</div>
+    <div id="resumoOrcamento"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     DÍVIDAS
+══════════════════════════════════════════ -->
+<section class="section" id="s-dividas">
+  <div class="section-header">
+    <h1 class="section-title">Estratégia de Quitação</h1>
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="btnAvalanche" onclick="setStrategy('avalanche')">🔥 Avalanche</button>
+      <button class="toggle-btn" id="btnSnowball" onclick="setStrategy('snowball')">⛄ Bola de Neve</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Cadastrar Dívida</div>
+    <div class="form-row">
+      <div class="form-group"><label>Nome</label><input type="text" id="divNome" placeholder="Ex: Cartão Visa"></div>
+      <div class="form-group" style="max-width:155px"><label>Saldo Devedor (R$)</label><input type="number" id="divSaldo" placeholder="0" min="0"></div>
+      <div class="form-group" style="max-width:155px"><label>Juros (% a.m.)</label><input type="number" id="divTaxa" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group" style="max-width:155px"><label>Parcela Mínima (R$)</label><input type="number" id="divParcela" placeholder="0" min="0"></div>
+      <div class="form-group" style="max-width:100px"><label>&nbsp;</label><button class="btn btn-primary" onclick="addDivida()">+ Adicionar</button></div>
+    </div>
+  </div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">Suas Dívidas <span id="lblOrdemDividas" class="badge badge-red" style="font-size:9px"></span></div>
+      <table class="data-table">
+        <thead><tr><th>Dívida</th><th class="num">Saldo</th><th class="num">Taxa/mês</th><th class="num">Mín.</th><th></th></tr></thead>
+        <tbody id="bodyDividas"></tbody>
+      </table>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:8px">
+        <div class="form-group" style="max-width:220px">
+          <label>💰 Pagamento extra por mês (R$)</label>
+          <input type="number" id="extraPayment" placeholder="0" min="0" oninput="renderDividas()">
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px" id="strategyBox"></div>
+      <div class="card" id="debtSummary"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Cronograma de Quitação <span style="font-size:11px;color:var(--text3);font-weight:400">(resumido a cada 6 meses)</span></div>
+    <div id="payoffSchedule"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     JUROS COMPOSTOS
+══════════════════════════════════════════ -->
+<section class="section" id="s-juros">
+  <div class="section-header"><h1 class="section-title">Calculadora de Juros Compostos</h1></div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">Parâmetros de Investimento</div>
+      <div class="form-row">
+        <div class="form-group"><label>Capital Inicial (R$)</label><input type="number" id="jCapital" value="10000" min="0" oninput="calcJuros()"></div>
+        <div class="form-group"><label>Aporte Mensal (R$)</label><input type="number" id="jAporte" value="1000" min="0" oninput="calcJuros()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Taxa de Juros Anual (%)</label><input type="number" id="jTaxa" value="12" step="0.1" min="0" oninput="calcJuros()"></div>
+        <div class="form-group"><label>Período (anos)</label><input type="number" id="jAnos" value="20" min="1" max="50" oninput="calcJuros()"></div>
+      </div>
+      <hr class="divider">
+      <div id="jurosResultados"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Milestones de Patrimônio</div>
+      <div id="milestones"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Curva de Crescimento Patrimonial</div>
+    <div class="chart-wrap" id="jurosChart"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Tabela de Evolução Anual</div>
+    <div id="jurosTable" style="overflow-x:auto"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     METAS FIRE
+══════════════════════════════════════════ -->
+<section class="section" id="s-metas">
+  <div class="section-header"><h1 class="section-title">Metas & Independência Financeira</h1></div>
+  <div class="grid-3" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">Reserva de Emergência</div>
+      <div id="cardReserva"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Número FIRE <span class="badge badge-gold">Regra dos 4%</span></div>
+      <div id="cardFire"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Patrimônio Declarado</div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Total de Ativos (R$)</label>
+        <input type="number" id="metaAtivos" value="0" min="0" oninput="renderMetas()">
+      </div>
+      <div id="cardPatrimonio"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">As 4 Virtudes Financeiras Estoicas</div>
+    <div id="virtudesGrid"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Princípios da Riqueza Estoica</div>
+    <div id="principiosGrid"></div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ══════════════════════════════════════════════════
+// SUPABASE
+// ══════════════════════════════════════════════════
+const SUPABASE_URL = 'https://hryoghxhqiyrqmppimcy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_aPq6AgF3lnUqDv3_ROMfbQ_vOCSy-XT';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function setSyncStatus(status) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  if (!dot || !lbl) return;
+  const map = {
+    loading: ['#c9a84c', 'Carregando da Nuvem...', '0 0 0 3px rgba(201,168,76,0.25)'],
+    saving:  ['#c9a84c', 'salvando...', '0 0 0 3px rgba(201,168,76,0.25)'],
+    ok:      ['#32d74b', 'sincronizado', 'none'],
+    error:   ['#ff453a', 'erro — usando cache', 'none'],
+  };
+  const [color, label, shadow] = map[status] || ['#636366', 'local', 'none'];
+  dot.style.background = color;
+  dot.style.boxShadow  = shadow;
+  lbl.textContent      = label;
+}
+
+async function syncToCloud() {
+  setSyncStatus('saving');
+  try {
+    const { error } = await db
+      .from('planilha_dados')
+      .upsert({ id: 1, conteudo_json: S, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    setSyncStatus('ok');
+  } catch (err) {
+    console.error('[Supabase] Erro ao salvar:', err);
+    setSyncStatus('error');
+  }
+}
+
+async function loadFromCloud() {
+  try {
+    const { data, error } = await db
+      .from('planilha_dados')
+      .select('conteudo_json')
+      .eq('id', 1)
+      .single();
+    // PGRST116 = nenhuma linha encontrada (primeira execução) — ignorar
+    if (error && error.code !== 'PGRST116') throw error;
+    if (data?.conteudo_json && Object.keys(data.conteudo_json).length > 0) {
+      Object.assign(S, data.conteudo_json);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
+    } else {
+      // Sem dados na nuvem: usar cache local como fallback
+      try { const d = JSON.parse(localStorage.getItem(STORAGE_KEY)); if (d) Object.assign(S, d); } catch(e) {}
+    }
+  } catch (err) {
+    console.error('[Supabase] Erro ao carregar:', err);
+    // Fallback: cache local para não deixar o usuário sem dados
+    try { const d = JSON.parse(localStorage.getItem(STORAGE_KEY)); if (d) Object.assign(S, d); } catch(e) {}
+    setSyncStatus('error');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════════════
+const STORAGE_KEY = 'planilha_estoica_v2';
+let appReady = false;
+let S = { receitas: [], despesas: [], dividas: [], strategy: 'avalanche', ativos: 0 };
+
+// Debounce: localStorage imediato, Supabase após 600ms de inatividade
+let _saveTimer = null;
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(syncToCloud, 600);
+}
+
+// ══════════════════════════════════════════════════
+// FORMATAÇÃO
+// ══════════════════════════════════════════════════
+const fmt  = v => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL', maximumFractionDigits:0 }).format(v);
+const fmtD = v => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v);
+const fmtP = v => (+v).toFixed(1) + '%';
+const fmtN = v => new Intl.NumberFormat('pt-BR').format(Math.round(v));
+
+// ══════════════════════════════════════════════════
+// FRASES ESTOICAS
+// ══════════════════════════════════════════════════
+const QUOTES = [
+  { q:'Riqueza não consiste em ter grandes posses, mas em ter poucas necessidades.', a:'Epictetus' },
+  { q:'Seja senhor de si mesmo e considere como riqueza tudo que é supérfluo ao necessário.', a:'Seneca' },
+  { q:'Dívida é servidão. Quem deve está acorrentado ao capricho de outro.', a:'Seneca' },
+  { q:'A alma que sabe quão pouco precisa conquista a verdadeira liberdade.', a:'Seneca' },
+  { q:'Nenhum vento serve para quem não sabe para onde vai.', a:'Seneca' },
+  { q:'Faz o que a natureza exige e começa imediatamente.', a:'Marco Aurélio' },
+  { q:'Pequenos aportes mensais constroem grandes fortunas. A gota d\'água cava a pedra.', a:'Adaptado de Lúcrecio' },
+  { q:'O homem mais rico é aquele cujo contentamento é mais barato.', a:'Henry David Thoreau' },
+  { q:'A fortuna protege o prudente.', a:'Virgílio' },
+  { q:'Não é o homem que tem pouco, mas o que deseja mais, que é pobre.', a:'Seneca' },
+];
+let qi = 0;
+function rotateQuote() {
+  const { q, a } = QUOTES[qi++ % QUOTES.length];
+  const qEl = document.getElementById('stoicQuote');
+  const aEl = document.getElementById('stoicAuthor');
+  if (qEl) qEl.textContent = q;
+  if (aEl) aEl.textContent = '— ' + a;
+  const ticker = document.getElementById('quoteTicker');
+  if (ticker) ticker.textContent = `"${q}" — ${a}`;
+}
+rotateQuote();
+setInterval(rotateQuote, 9000);
+
+// ══════════════════════════════════════════════════
+// NAVEGAÇÃO
+// ══════════════════════════════════════════════════
+function showSection(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('s-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'dashboard')  renderDashboard();
+  if (id === 'orcamento')  renderOrcamento();
+  if (id === 'dividas')    renderDividas();
+  if (id === 'juros')      calcJuros();
+  if (id === 'metas')      renderMetas();
+}
+
+// ══════════════════════════════════════════════════
+// CÁLCULOS BASE
+// ══════════════════════════════════════════════════
+const totalRec  = () => S.receitas.reduce((s, r) => s + r.valor, 0);
+const totalDesp = () => S.despesas.reduce((s, d) => s + d.valor, 0);
+const totalDiv  = () => S.dividas.reduce((s, d) => s + d.saldo, 0);
+const saldoMes  = () => totalRec() - totalDesp();
+const taxaPoupa = () => { const r = totalRec(); return r > 0 ? (saldoMes() / r) * 100 : 0; };
+const patriLiq  = () => (S.ativos || 0) - totalDiv();
+
+// ══════════════════════════════════════════════════
+// ORÇAMENTO
+// ══════════════════════════════════════════════════
+function addReceita() {
+  const desc = document.getElementById('recDesc').value.trim();
+  const val  = parseFloat(document.getElementById('recVal').value);
+  if (!desc || isNaN(val) || val <= 0) return;
+  S.receitas.push({ id: Date.now(), desc, valor: val });
+  document.getElementById('recDesc').value = '';
+  document.getElementById('recVal').value  = '';
+  save(); renderOrcamento(); renderDashboard();
+}
+function removeReceita(id) { S.receitas = S.receitas.filter(r => r.id !== id); save(); renderOrcamento(); renderDashboard(); }
+
+function addDespesa() {
+  const desc = document.getElementById('despDesc').value.trim();
+  const cat  = document.getElementById('despCat').value;
+  const val  = parseFloat(document.getElementById('despVal').value);
+  if (!desc || isNaN(val) || val <= 0) return;
+  S.despesas.push({ id: Date.now(), desc, cat, valor: val });
+  document.getElementById('despDesc').value = '';
+  document.getElementById('despVal').value  = '';
+  save(); renderOrcamento(); renderDashboard();
+}
+function removeDespesa(id) { S.despesas = S.despesas.filter(d => d.id !== id); save(); renderOrcamento(); renderDashboard(); }
+
+const CAT_COLORS = { 'Moradia':'#0a84ff', 'Alimentação':'#32d74b', 'Transporte':'#ff9f0a', 'Saúde':'#ff453a', 'Educação':'#bf5af2', 'Lazer':'#ff2d55', 'Investimentos':'#c9a84c', 'Outros':'#636366' };
+
+function renderOrcamento() {
+  if (!appReady) return;
+  // Receitas
+  const br = document.getElementById('bodyReceitas');
+  br.innerHTML = S.receitas.length === 0
+    ? '<tr><td colspan="3"><div class="empty-state"><div class="icon">💵</div>Nenhuma receita adicionada</div></td></tr>'
+    : S.receitas.map(r => `<tr><td>${r.desc}</td><td class="num hl-green">${fmtD(r.valor)}</td><td><button class="btn btn-danger" onclick="removeReceita(${r.id})">×</button></td></tr>`).join('');
+  document.getElementById('lblTotalReceitas').textContent = fmt(totalRec());
+
+  // Despesas
+  const bd = document.getElementById('bodyDespesas');
+  bd.innerHTML = S.despesas.length === 0
+    ? '<tr><td colspan="4"><div class="empty-state"><div class="icon">📋</div>Nenhuma despesa adicionada</div></td></tr>'
+    : S.despesas.map(d => `<tr><td>${d.desc}</td><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:${CAT_COLORS[d.cat]||'#636366'};flex-shrink:0"></span>${d.cat}</span></td><td class="num hl-red">${fmtD(d.valor)}</td><td><button class="btn btn-danger" onclick="removeDespesa(${d.id})">×</button></td></tr>`).join('');
+  document.getElementById('lblTotalDespesas').textContent = fmt(totalDesp());
+
+  renderResumo5030();
+}
+
+function renderResumo5030() {
+  const renda = totalRec();
+  const saldo = saldoMes();
+  const taxa  = taxaPoupa();
+  const byCat = {};
+  S.despesas.forEach(d => { byCat[d.cat] = (byCat[d.cat] || 0) + d.valor; });
+
+  const nec = (byCat['Moradia']||0) + (byCat['Alimentação']||0) + (byCat['Transporte']||0) + (byCat['Saúde']||0);
+  const des = (byCat['Lazer']||0) + (byCat['Outros']||0);
+  const inv = (byCat['Investimentos']||0) + Math.max(0, saldo);
+  const pNec = renda > 0 ? (nec/renda)*100 : 0;
+  const pDes = renda > 0 ? (des/renda)*100 : 0;
+  const pInv = renda > 0 ? (inv/renda)*100 : 0;
+
+  const barsHtml = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat, val]) => `
+    <div class="meter-row">
+      <div class="meter-label" style="font-size:11px;display:flex;align-items:center;gap:5px">
+        <span style="width:7px;height:7px;border-radius:2px;background:${CAT_COLORS[cat]||'#636366'};flex-shrink:0"></span>${cat}
+      </div>
+      <div class="meter-bar"><div class="meter-fill" style="width:${renda>0?Math.min((val/renda)*100,100):0}%;background:${CAT_COLORS[cat]||'#636366'}"></div></div>
+      <div class="meter-val">${fmtD(val)}</div>
+    </div>`).join('');
+
+  const msg = taxa >= 30 ? `⚡ Excelente! Taxa de poupança ${fmtP(taxa)}. No caminho da independência financeira.`
+    : taxa >= 20 ? `✅ Boa taxa de poupança de ${fmtP(taxa)}. Meta: superar 30% para acelerar a liberdade.`
+    : taxa >= 10 ? `⚠️ Taxa de poupança de ${fmtP(taxa)}. Corte supérfluos para alcançar 20%+.`
+    : taxa >= 0  ? `🔴 Taxa de poupança baixa (${fmtP(taxa)}). Revise as despesas com rigor estoico.`
+    : `🚨 Gastos superiores à renda (${fmtP(taxa)}). Ação imediata necessária.`;
+
+  document.getElementById('resumoOrcamento').innerHTML = `
+    <div class="grid-2">
+      <div>
+        <div class="meter-row" style="margin-bottom:18px">
+          <div class="meter-label" style="color:var(--text);font-size:14px;font-weight:600">Saldo Mensal</div>
+          <div style="font-size:22px;font-weight:800;color:${saldo>=0?'var(--green)':'var(--red)'}">${fmtD(saldo)}</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">🏠 Necessidades <span style="color:var(--text3);font-weight:400">(alvo ≤50%)</span></div>
+          <div class="meter-bar"><div class="meter-fill" style="width:${Math.min(pNec,100)}%;background:${pNec<=50?'var(--blue)':'var(--red)'}"></div></div>
+          <div class="meter-val" style="color:${pNec<=50?'var(--blue)':'var(--red)'}">${fmtP(pNec)}</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">🎯 Desejos <span style="color:var(--text3);font-weight:400">(alvo ≤30%)</span></div>
+          <div class="meter-bar"><div class="meter-fill" style="width:${Math.min(pDes,100)}%;background:${pDes<=30?'var(--blue)':'var(--red)'}"></div></div>
+          <div class="meter-val" style="color:${pDes<=30?'var(--blue)':'var(--red)'}">${fmtP(pDes)}</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">📈 Investimentos <span style="color:var(--text3);font-weight:400">(alvo ≥20%)</span></div>
+          <div class="meter-bar"><div class="meter-fill" style="width:${Math.min(pInv,100)}%;background:${pInv>=20?'var(--green)':'var(--gold)'}"></div></div>
+          <div class="meter-val" style="color:${pInv>=20?'var(--green)':'var(--gold)'}">${fmtP(pInv)}</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Por Categoria</div>
+        ${barsHtml || '<div class="empty-state" style="padding:16px">Sem despesas</div>'}
+      </div>
+    </div>
+    <div class="info-box"><strong>Diagnóstico:</strong> ${msg}</div>`;
+}
+
+// ══════════════════════════════════════════════════
+// DÍVIDAS
+// ══════════════════════════════════════════════════
+function addDivida() {
+  const nome    = document.getElementById('divNome').value.trim();
+  const saldo   = parseFloat(document.getElementById('divSaldo').value);
+  const taxa    = parseFloat(document.getElementById('divTaxa').value);
+  const parcela = parseFloat(document.getElementById('divParcela').value);
+  if (!nome || [saldo,taxa,parcela].some(v => isNaN(v) || v < 0) || saldo <= 0 || parcela <= 0) {
+    alert('Preencha todos os campos corretamente. Saldo e parcela devem ser maiores que zero.');
+    return;
+  }
+  S.dividas.push({ id: Date.now(), nome, saldo, taxa, parcela });
+  ['divNome','divSaldo','divTaxa','divParcela'].forEach(id => { document.getElementById(id).value = ''; });
+  save(); renderDividas();
+}
+function removeDivida(id) { S.dividas = S.dividas.filter(d => d.id !== id); save(); renderDividas(); }
+
+function setStrategy(s) {
+  S.strategy = s;
+  document.getElementById('btnAvalanche').classList.toggle('active', s === 'avalanche');
+  document.getElementById('btnSnowball').classList.toggle('active', s === 'snowball');
+  save(); renderDividas();
+}
+
+function calcPayoff(dividas, extra, strategy) {
+  if (!dividas.length) return { months: 0, totalInterest: 0, schedule: [] };
+  let debts = dividas.map(d => ({ ...d }));
+  debts.sort((a, b) => strategy === 'avalanche' ? b.taxa - a.taxa : a.saldo - b.saldo);
+  let month = 0, totalInterest = 0;
+  const schedule = [];
+  while (debts.some(d => d.saldo > 0.01) && month < 600) {
+    month++;
+    const row = { month, debts: [] };
+    // Aplicar juros e pagar mínimo
+    debts.forEach(d => {
+      if (d.saldo <= 0.01) { row.debts.push({ nome: d.nome, saldo: 0, pago: 0 }); return; }
+      const juros = d.saldo * (d.taxa / 100);
+      totalInterest += juros;
+      d.saldo += juros;
+      const pago = Math.min(d.parcela, d.saldo);
+      d.saldo = Math.max(0, d.saldo - pago);
+      row.debts.push({ nome: d.nome, saldo: d.saldo, pago });
+    });
+    // Aplicar extra na dívida-foco
+    let extraLeft = extra;
+    for (const d of debts) {
+      if (d.saldo <= 0.01 || extraLeft <= 0) continue;
+      const aplicado = Math.min(extraLeft, d.saldo);
+      d.saldo = Math.max(0, d.saldo - aplicado);
+      extraLeft -= aplicado;
+      const rd = row.debts.find(r => r.nome === d.nome);
+      if (rd) { rd.pago += aplicado; rd.saldo = d.saldo; }
+    }
+    schedule.push(row);
+  }
+  return { months: month, totalInterest, schedule };
+}
+
+function renderDividas() {
+  if (!appReady) return;
+  const extra = parseFloat(document.getElementById('extraPayment')?.value) || 0;
+  const isl = S.strategy === 'avalanche';
+
+  // Label de ordem
+  const lbl = document.getElementById('lblOrdemDividas');
+  if (lbl) lbl.textContent = isl ? 'maior juros primeiro' : 'menor saldo primeiro';
+
+  // Tabela
+  const bd = document.getElementById('bodyDividas');
+  if (!S.dividas.length) {
+    bd.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="icon">💳</div>Nenhuma dívida cadastrada</div></td></tr>';
+  } else {
+    const sorted = [...S.dividas].sort((a, b) => isl ? b.taxa - a.taxa : a.saldo - b.saldo);
+    bd.innerHTML = sorted.map((d, i) => `
+      <tr>
+        <td>${i===0?'<span class="badge badge-red" style="margin-right:5px">FOCO</span>':''}${d.nome}</td>
+        <td class="num">${fmt(d.saldo)}</td>
+        <td class="num" style="color:var(--red)">${d.taxa}%</td>
+        <td class="num">${fmt(d.parcela)}</td>
+        <td><button class="btn btn-danger" onclick="removeDivida(${d.id})">×</button></td>
+      </tr>`).join('');
+  }
+
+  // Estratégia box
+  document.getElementById('strategyBox').innerHTML = isl ? `
+    <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:6px">🔥 Método Avalanche</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Pague o mínimo em todas e direcione todo o dinheiro extra para a dívida com <strong style="color:var(--text2)">maior taxa de juros</strong>. Matematicamente ótimo — você paga menos juros no total.</div>
+    <div class="info-box"><strong>Princípio:</strong> Elimine primeiro o veneno mais virulento.</div>` : `
+    <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:6px">⛄ Método Bola de Neve</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Pague o mínimo em todas e direcione o extra para a dívida com <strong style="color:var(--text2)">menor saldo</strong>. Gera vitórias rápidas e motivação para continuar.</div>
+    <div class="info-box"><strong>Princípio:</strong> Cada vitória fortalece a disciplina para a próxima.</div>`;
+
+  if (!S.dividas.length) {
+    document.getElementById('debtSummary').innerHTML = '<div class="empty-state">Adicione dívidas para ver o plano de quitação</div>';
+    document.getElementById('payoffSchedule').innerHTML = '<div class="empty-state">Sem dívidas cadastradas</div>';
+    return;
+  }
+
+  const res = calcPayoff(S.dividas, extra, S.strategy);
+  const resAlt = calcPayoff(S.dividas, extra, S.strategy === 'avalanche' ? 'snowball' : 'avalanche');
+  const totalD = totalDiv();
+  const anos  = Math.floor(res.months / 12);
+  const meses = res.months % 12;
+  const diff  = Math.abs(resAlt.totalInterest - res.totalInterest);
+
+  document.getElementById('debtSummary').innerHTML = `
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600;margin-bottom:14px">Resumo da Estratégia</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text2);font-size:13px">Total de Dívidas</span>
+        <span class="hl-red" style="font-size:18px;font-weight:800">${fmt(totalD)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text2);font-size:13px">Tempo para Quitar</span>
+        <span class="hl-gold" style="font-size:18px;font-weight:800">${anos>0?anos+'a ':' '}${meses}m</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text2);font-size:13px">Juros Totais</span>
+        <span class="hl-red">${fmt(res.totalInterest)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text2);font-size:13px">Total a Pagar</span>
+        <span>${fmt(totalD + res.totalInterest)}</span>
+      </div>
+      ${diff > 50 ? `<div style="font-size:11px;padding:8px 12px;background:rgba(50,215,75,0.08);border:1px solid rgba(50,215,75,0.2);border-radius:7px;color:var(--green)">
+        Esta estratégia é ${res.totalInterest < resAlt.totalInterest ? 'mais eficiente' : 'diferente'}: economiza ${fmt(diff)} em juros vs. o outro método.
+      </div>` : ''}
+      ${extra > 0 ? `<div style="font-size:11px;padding:8px 12px;background:rgba(10,132,255,0.08);border:1px solid rgba(10,132,255,0.2);border-radius:7px;color:var(--blue)">
+        Pagamento extra de ${fmt(extra)}/mês aplicado na dívida-foco.
+      </div>` : ''}
+    </div>`;
+
+  // Cronograma
+  const sched = res.schedule.filter((r, i) => i === 0 || r.month % 6 === 0 || r.month === res.months).slice(0, 25);
+  document.getElementById('payoffSchedule').innerHTML = sched.length === 0 ? '<div class="empty-state">Sem dados</div>' : `
+    <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead><tr><th>Mês</th>${S.dividas.map(d=>`<th class="num">${d.nome}</th>`).join('')}</tr></thead>
+      <tbody>${sched.map(row => `
+        <tr>
+          <td><strong>${row.month}</strong></td>
+          ${S.dividas.map(d => {
+            const rd = row.debts.find(r => r.nome === d.nome);
+            if (!rd || rd.saldo <= 0.01) return '<td class="num" style="color:var(--green)">✓ Quitado</td>';
+            return `<td class="num" style="color:var(--text2)">${fmt(rd.saldo)}</td>`;
+          }).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+// ══════════════════════════════════════════════════
+// JUROS COMPOSTOS
+// ══════════════════════════════════════════════════
+function projCompound(P, PMT, rAnual, anos) {
+  const rm = rAnual / 100 / 12;
+  let bal = P, inv = P;
+  const data = [{ ano: 0, balance: P, investido: P, juros: 0 }];
+  for (let m = 1; m <= anos * 12; m++) {
+    bal = bal * (1 + rm) + PMT;
+    inv += PMT;
+    if (m % 12 === 0) data.push({ ano: m / 12, balance: bal, investido: inv, juros: bal - inv });
+  }
+  return data;
+}
+
+function calcJuros() {
+  if (!appReady) return;
+  const P    = parseFloat(document.getElementById('jCapital').value) || 0;
+  const PMT  = parseFloat(document.getElementById('jAporte').value)  || 0;
+  const taxa = parseFloat(document.getElementById('jTaxa').value)    || 0;
+  const anos = parseInt(document.getElementById('jAnos').value)      || 1;
+  const data = projCompound(P, PMT, taxa, anos);
+  const fin  = data[data.length - 1];
+
+  document.getElementById('jurosResultados').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Valor Final</div>
+        <div style="font-size:26px;font-weight:800;color:var(--green);letter-spacing:-1px">${fmt(fin.balance)}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Juros Gerados</div>
+        <div style="font-size:26px;font-weight:800;color:var(--gold);letter-spacing:-1px">${fmt(fin.juros)}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Total Investido</div>
+        <div style="font-size:20px;font-weight:700;color:var(--blue)">${fmt(fin.investido)}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Multiplicador</div>
+        <div style="font-size:20px;font-weight:700;color:var(--text)">${fin.investido>0?(fin.balance/fin.investido).toFixed(1):0}×</div>
+      </div>
+    </div>
+    <div class="info-box"><strong>Efeito dos juros compostos:</strong> De ${fmt(fin.investido)} investidos em ${anos} anos, os juros respondem por ${fin.balance>0?fmtP((fin.juros/fin.balance)*100):'0%'} do patrimônio final — trabalhando por você 24h por dia.</div>`;
+
+  // Milestones
+  const targets = [50000, 100000, 250000, 500000, 1000000, 2000000, 5000000, 10000000];
+  const reached = targets.filter(t => t <= fin.balance * 1.05);
+  document.getElementById('milestones').innerHTML = reached.length === 0
+    ? '<div class="empty-state">Ajuste os parâmetros para ver milestones</div>'
+    : reached.map(t => {
+        const hit = data.find(d => d.balance >= t);
+        const pct = hit ? 100 : (fin.balance / t) * 100;
+        return `<div class="meter-row" style="margin-bottom:10px">
+          <div style="min-width:110px;font-size:12px;color:var(--text2)">${fmt(t)}</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:${Math.min(pct,100)}%;background:${hit?'var(--green)':'var(--gold)'}"></div></div>
+          <div style="min-width:60px;text-align:right;font-size:11px;color:${hit?'var(--green)':'var(--text3)'}">
+            ${hit ? 'Ano '+hit.ano : '>'+anos+'a'}
+          </div>
+        </div>`;
+      }).join('');
+
+  renderJurosChart(data);
+  renderJurosTable(data);
+}
+
+function renderJurosChart(data) {
+  const W = 860, H = 280, PAD = { t:16, r:20, b:36, l:80 };
+  const cW = W - PAD.l - PAD.r, cH = H - PAD.t - PAD.b;
+  const maxV = Math.max(...data.map(d => d.balance), 1);
+  const maxY = data[data.length-1].ano;
+  const xs = a => PAD.l + (a / maxY) * cW;
+  const ys = v => PAD.t + cH - (v / maxV) * cH;
+  const bPts = data.map(d => `${xs(d.ano)},${ys(d.balance)}`).join(' ');
+  const iPts = data.map(d => `${xs(d.ano)},${ys(d.investido)}`).join(' ');
+  const grids = [1,2,3,4].map(i => {
+    const v = maxV * i / 4, y = ys(v);
+    return `<line x1="${PAD.l}" y1="${y}" x2="${W-PAD.r}" y2="${y}" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <text x="${PAD.l-6}" y="${y+4}" fill="#4a4a4e" font-size="9" text-anchor="end">${fmt(v)}</text>`;
+  }).join('');
+  const step = Math.max(1, Math.ceil(maxY / 8));
+  const xLbls = Array.from({length: Math.floor(maxY/step)+1}, (_,i) => i*step)
+    .map(y => `<text x="${xs(y)}" y="${H-PAD.b+14}" fill="#4a4a4e" font-size="9" text-anchor="middle">${y}a</text>`).join('');
+
+  document.getElementById('jurosChart').innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#32d74b" stop-opacity="0.28"/><stop offset="100%" stop-color="#32d74b" stop-opacity="0"/></linearGradient>
+        <linearGradient id="gI" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a84ff" stop-opacity="0.18"/><stop offset="100%" stop-color="#0a84ff" stop-opacity="0"/></linearGradient>
+      </defs>
+      ${grids}
+      <polygon points="${xs(0)},${ys(0)} ${bPts} ${xs(maxY)},${ys(0)}" fill="url(#gB)"/>
+      <polygon points="${xs(0)},${ys(0)} ${iPts} ${xs(maxY)},${ys(0)}" fill="url(#gI)"/>
+      <polyline points="${bPts}" fill="none" stroke="#32d74b" stroke-width="2.5"/>
+      <polyline points="${iPts}" fill="none" stroke="#0a84ff" stroke-width="2" stroke-dasharray="6,3"/>
+      <line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${H-PAD.b}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      <line x1="${PAD.l}" y1="${H-PAD.b}" x2="${W-PAD.r}" y2="${H-PAD.b}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      ${xLbls}
+      <rect x="${PAD.l}" y="6" width="10" height="3" fill="#32d74b" rx="1.5"/>
+      <text x="${PAD.l+14}" y="13" fill="#aeaeb2" font-size="10">Patrimônio Total</text>
+      <rect x="${PAD.l+120}" y="6" width="10" height="3" fill="#0a84ff" rx="1.5"/>
+      <text x="${PAD.l+134}" y="13" fill="#aeaeb2" font-size="10">Total Investido</text>
+      <text x="${xs(maxY)-2}" y="${ys(data[data.length-1].balance)-8}" fill="#32d74b" font-size="11" font-weight="700" text-anchor="end">${fmt(data[data.length-1].balance)}</text>
+    </svg>`;
+}
+
+function renderJurosTable(data) {
+  document.getElementById('jurosTable').innerHTML = `
+    <table class="data-table">
+      <thead><tr>
+        <th>Ano</th><th class="num">Total Investido</th><th class="num">Juros Acumulados</th>
+        <th class="num">Patrimônio</th><th class="num">Crescimento no Ano</th><th class="num">% Juros</th>
+      </tr></thead>
+      <tbody>${data.map((d,i) => {
+        const prev = i > 0 ? data[i-1].balance : d.balance;
+        const cresc = i > 0 ? d.balance - prev : 0;
+        return `<tr>
+          <td><strong>${d.ano}</strong></td>
+          <td class="num" style="color:var(--blue)">${fmt(d.investido)}</td>
+          <td class="num" style="color:var(--gold)">${fmt(d.juros)}</td>
+          <td class="num" style="color:var(--green);font-weight:700">${fmt(d.balance)}</td>
+          <td class="num" style="color:${cresc>0?'var(--green)':'var(--text3)'}">${i>0?'+'+fmt(cresc):'—'}</td>
+          <td class="num" style="color:var(--text3)">${d.balance>0?fmtP((d.juros/d.balance)*100):'—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+// ══════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════
+function renderDashboard() {
+  if (!appReady) return;
+  const renda = totalRec(), desp = totalDesp(), saldo = saldoMes(), taxa = taxaPoupa();
+  const totDiv = totalDiv(), patLiq = patriLiq();
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card gold"><div class="kpi-label">Patrimônio Líquido</div><div class="kpi-value gold">${fmt(patLiq)}</div><div class="kpi-sub">Ativos − Dívidas</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Renda Mensal</div><div class="kpi-value green">${fmt(renda)}</div><div class="kpi-sub">${S.receitas.length} fontes de renda</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Despesas Mensais</div><div class="kpi-value red">${fmt(desp)}</div><div class="kpi-sub">${S.despesas.length} itens lançados</div></div>
+    <div class="kpi-card ${saldo>=0?'green':'red'}"><div class="kpi-label">Saldo Mensal</div><div class="kpi-value ${saldo>=0?'green':'red'}">${fmt(saldo)}</div><div class="kpi-sub">Disponível p/ investir</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">Taxa de Poupança</div><div class="kpi-value blue">${fmtP(Math.max(0,taxa))}</div><div class="progress-wrap"><div class="progress-bar" style="width:${Math.min(100,Math.max(0,taxa))}%;background:${taxa>=20?'var(--green)':'var(--gold)'}"></div></div></div>
+    <div class="kpi-card red"><div class="kpi-label">Total de Dívidas</div><div class="kpi-value red">${fmt(totDiv)}</div><div class="kpi-sub">${S.dividas.length} dívidas ativas</div></div>`;
+
+  // Barras de categorias
+  const byCat = {};
+  S.despesas.forEach(d => { byCat[d.cat] = (byCat[d.cat]||0) + d.valor; });
+  const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('dashBudgetBars').innerHTML = cats.length === 0
+    ? '<div class="empty-state">Adicione despesas no Orçamento</div>'
+    : cats.map(([cat, val]) => `
+        <div class="meter-row" style="margin-bottom:9px">
+          <div class="meter-label" style="font-size:11px;display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:2px;background:${CAT_COLORS[cat]||'#636366'};flex-shrink:0"></span>${cat}
+          </div>
+          <div class="meter-bar"><div class="meter-fill" style="width:${renda>0?Math.min((val/renda)*100,100):0}%;background:${CAT_COLORS[cat]||'#636366'}"></div></div>
+          <div class="meter-val">${fmt(val)}</div>
+        </div>`).join('');
+
+  // Score saúde
+  const scores = [
+    { label:'Controle de Gastos', val: desp>0?Math.max(0,100-(desp/Math.max(renda,1)*100)):50, color:'var(--green)' },
+    { label:'Taxa de Poupança',   val: Math.min(100,Math.max(0,taxa*4)), color:'var(--blue)' },
+    { label:'Gestão de Dívidas',  val: Math.max(0,100-(S.dividas.length*12)), color:'var(--gold)' },
+    { label:'Liquidez',           val: saldo>0?Math.min(100,(saldo/Math.max(desp,1))*80):0, color:'var(--red)' },
+  ];
+  const score = Math.round(scores.reduce((s,sc)=>s+sc.val,0)/scores.length);
+  const scoreColor = score>=70?'var(--green)':score>=40?'var(--gold)':'var(--red)';
+  document.getElementById('dashHealth').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+      <div class="circle-indicator" style="border-color:${scoreColor}">
+        <span style="color:${scoreColor};font-size:20px">${score}</span><small>Score</small>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:${scoreColor}">${score>=70?'⚡ Excelente':score>=40?'✅ Bom':'⚠️ Atenção'}</div>
+        <div style="font-size:11px;color:var(--text3)">Saúde Financeira Geral</div>
+      </div>
+    </div>
+    ${scores.map(s=>`<div class="meter-row" style="margin-bottom:9px">
+      <div class="meter-label" style="font-size:12px">${s.label}</div>
+      <div class="meter-bar"><div class="meter-fill" style="width:${s.val}%;background:${s.color}"></div></div>
+      <div class="meter-val" style="color:${s.color}">${Math.round(s.val)}</div>
+    </div>`).join('')}`;
+
+  // Projeção 10 anos
+  const aporte = Math.max(0, saldo);
+  const data10 = projCompound(S.ativos||0, aporte, 12, 10);
+  renderMiniChart(data10, 'dashProjectionChart');
+}
+
+function renderMiniChart(data, elId) {
+  const W = 900, H = 180, PAD = { t:10, r:20, b:32, l:80 };
+  const cW = W-PAD.l-PAD.r, cH = H-PAD.t-PAD.b;
+  const maxV = Math.max(...data.map(d=>d.balance),1);
+  const maxY = data[data.length-1].ano||10;
+  const xs = a => PAD.l+(a/maxY)*cW;
+  const ys = v => PAD.t+cH-(v/maxV)*cH;
+  const pts = data.map(d=>`${xs(d.ano)},${ys(d.balance)}`).join(' ');
+  const area = `${xs(0)},${ys(0)} ${pts} ${xs(maxY)},${ys(0)}`;
+  const xLbls = data.map(d=>`<text x="${xs(d.ano)}" y="${H-PAD.b+13}" fill="#4a4a4e" font-size="9" text-anchor="middle">${d.ano}a</text>`).join('');
+  const last = data[data.length-1];
+  document.getElementById(elId).innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="gP" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c9a84c" stop-opacity="0.35"/><stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/></linearGradient></defs>
+      <polygon points="${area}" fill="url(#gP)"/>
+      <polyline points="${pts}" fill="none" stroke="#c9a84c" stroke-width="2.5"/>
+      <line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${H-PAD.b}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+      <line x1="${PAD.l}" y1="${H-PAD.b}" x2="${W-PAD.r}" y2="${H-PAD.b}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+      <text x="${PAD.l-6}" y="${ys(0)+4}" fill="#4a4a4e" font-size="9" text-anchor="end">${fmt(0)}</text>
+      <text x="${PAD.l-6}" y="${ys(maxV/2)+4}" fill="#4a4a4e" font-size="9" text-anchor="end">${fmt(maxV/2)}</text>
+      <text x="${PAD.l-6}" y="${ys(maxV)+4}" fill="#4a4a4e" font-size="9" text-anchor="end">${fmt(maxV)}</text>
+      ${xLbls}
+      <text x="${xs(maxY)-2}" y="${ys(last.balance)-8}" fill="#c9a84c" font-size="12" font-weight="700" text-anchor="end">${fmt(last.balance)}</text>
+    </svg>`;
+}
+
+// ══════════════════════════════════════════════════
+// METAS FIRE
+// ══════════════════════════════════════════════════
+function renderMetas() {
+  if (!appReady) return;
+  S.ativos = parseFloat(document.getElementById('metaAtivos')?.value) || 0;
+  save();
+  const desp   = totalDesp();
+  const renda  = totalRec();
+  const saldo  = saldoMes();
+  const ativos = S.ativos;
+
+  // Reserva emergência (6 meses)
+  const metaRes = desp * 6;
+  const pctRes  = metaRes > 0 ? Math.min(100, (ativos / metaRes) * 100) : 0;
+  document.getElementById('cardReserva').innerHTML = `
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:28px;font-weight:800;color:${pctRes>=100?'var(--green)':'var(--gold)'}">${fmtP(pctRes)}</div>
+      <div style="font-size:12px;color:var(--text3)">Meta: ${fmt(metaRes)} (6× despesas)</div>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" style="width:${pctRes}%;background:${pctRes>=100?'var(--green)':'var(--gold)'}"></div></div>
+    <div style="margin-top:10px;font-size:12px;color:var(--text3)">
+      ${pctRes>=100?'✅ Reserva completa! Foque em investimentos de longo prazo.':
+        `Faltam ${fmt(Math.max(0,metaRes-ativos))} para completar 6 meses de cobertura.`}
+    </div>
+    <div class="info-box"><strong>Princípio:</strong> "A reserva é o escudo do guerreiro contra a incerteza." — Seneca</div>`;
+
+  // FIRE (25x despesas anuais)
+  const fireNum = desp * 12 * 25;
+  const pctFire = fireNum > 0 ? Math.min(100, (ativos / fireNum) * 100) : 0;
+  let anosFireStr = '—';
+  if (saldo > 0 && fireNum > ativos) {
+    const rm = 0.01;
+    let bal = ativos, m = 0;
+    while (bal < fireNum && m < 600) { bal = bal * (1+rm) + saldo; m++; }
+    anosFireStr = m < 600 ? (m/12).toFixed(1)+' anos' : '> 50 anos';
+  } else if (ativos >= fireNum && fireNum > 0) {
+    anosFireStr = '🎉 Já atingido!';
+  }
+  document.getElementById('cardFire').innerHTML = `
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:24px;font-weight:800;color:var(--green)">${fmt(fireNum)}</div>
+      <div style="font-size:11px;color:var(--text3)">= 25× despesas anuais</div>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" style="width:${pctFire}%;background:var(--green)"></div></div>
+    <div style="margin-top:8px;display:flex;justify-content:space-between;font-size:11px">
+      <span style="color:var(--text3)">Atual: ${fmt(ativos)}</span>
+      <span style="color:var(--text3)">${fmtP(pctFire)}</span>
+    </div>
+    <div style="margin-top:12px;background:rgba(50,215,75,0.08);border:1px solid rgba(50,215,75,0.2);border-radius:8px;padding:10px;font-size:12px;color:var(--green);text-align:center">
+      Independência financeira: <strong>${anosFireStr}</strong>
+    </div>`;
+
+  // Patrimônio
+  document.getElementById('cardPatrimonio').innerHTML = `
+    <div style="text-align:center;margin-bottom:10px">
+      <div style="font-size:26px;font-weight:800;color:var(--gold)">${fmt(ativos)}</div>
+      <div style="font-size:11px;color:var(--text3)">Total de ativos</div>
+    </div>
+    <div style="font-size:13px;color:var(--text2)">Patrimônio Líquido: <span style="color:${patriLiq()>=0?'var(--green)':'var(--red)'};font-weight:700">${fmt(patriLiq())}</span></div>
+    <div style="margin-top:6px;font-size:13px;color:var(--text2)">Dívidas: <span class="hl-red">${fmt(totalDiv())}</span></div>`;
+
+  // 4 Virtudes
+  const virtudes = [
+    { nome:'Prudência (Φρόνησις)', desc:'Planejamento e visão de longo prazo', score:Math.min(100,Math.max(0,(saldo>0?50:0)+(S.receitas.length>0?25:0)+(S.dividas.length===0?25:10))), color:'var(--blue)', dica:'Mantenha orçamento detalhado e metas claras de longo prazo.' },
+    { nome:'Temperança (Σωφροσύνη)', desc:'Controle dos gastos supérfluos', score:Math.min(100,Math.max(0,taxaPoupa()*3.5)), color:'var(--green)', dica:'Questione cada compra: necessidade real ou desejo passageiro?' },
+    { nome:'Coragem (Ἀνδρεία)', desc:'Investir e assumir riscos calculados', score:Math.min(100,Math.max(0,ativos>0?75:25)), color:'var(--gold)', dica:'Coloque o capital parado para trabalhar no longo prazo.' },
+    { nome:'Justiça (Δικαιοσύνη)', desc:'Honrar compromissos, quitar dívidas', score:Math.min(100,Math.max(0,100-(S.dividas.length*15))), color:'var(--red)', dica:'Elimine dívidas para agir com consciência tranquila.' },
+  ];
+  document.getElementById('virtudesGrid').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+      ${virtudes.map(v=>`
+        <div style="background:var(--surface2);border-radius:10px;padding:16px">
+          <div style="font-size:13px;font-weight:700;color:${v.color};margin-bottom:3px">${v.nome}</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:10px">${v.desc}</div>
+          <div class="progress-wrap" style="margin-bottom:8px"><div class="progress-bar" style="width:${v.score}%;background:${v.color}"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div style="font-size:11px;color:var(--text3);line-height:1.5">${v.dica}</div>
+            <div style="color:${v.color};font-weight:800;font-size:14px;flex-shrink:0">${Math.round(v.score)}</div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+  // Princípios
+  const principios = [
+    { icon:'🏛️', titulo:'Dicotomia do Controle', texto:'Foque apenas no que você controla: seus gastos, sua poupança e suas decisões de investimento. Mercados, inflação e economia estão fora do seu controle — são indiferentes.' },
+    { icon:'⏳', titulo:'Visualização Negativa', texto:'Imagine periodicamente perder tudo. Isso aumenta a gratidão, reduz gastos impulsivos e reforça a necessidade de uma reserva sólida. O estoico pratica a frugalidade como liberdade.' },
+    { icon:'🔥', titulo:'Amor Fati', texto:'Aceite os ciclos de mercado. As quedas são oportunidades de compra. O investidor estoico compra mais quando todos vendem com medo — porque confia no longo prazo.' },
+    { icon:'💀', titulo:'Memento Mori', texto:'O tempo é finito. Cada dia que você não investe é uma semente não plantada. Comece cedo, seja consistente. Os juros compostos recompensam a paciência e punem a procrastinação.' },
+    { icon:'⚙️', titulo:'Askesis — Prática Deliberada', texto:'Automatize a virtude. Um débito automático de investimento supera a força de vontade. Construa sistemas robustos que funcionem mesmo nos dias de fraqueza.' },
+    { icon:'🌿', titulo:'Kata Physin — Vida Natural', texto:'Necessidades são poucas e finitas. Desejos são infinitos. A verdadeira riqueza estoica não está em acumular mais, mas em precisar de menos e ser grato pelo que já tem.' },
+  ];
+  document.getElementById('principiosGrid').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
+      ${principios.map(p=>`
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;border-left:3px solid var(--gold)">
+          <div style="font-size:13px;font-weight:700;margin-bottom:6px">${p.icon} ${p.titulo}</div>
+          <div style="font-size:12px;color:var(--text3);line-height:1.65">${p.texto}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════
+// INICIALIZAÇÃO
+// ══════════════════════════════════════════════════
+async function initApp() {
+  setSyncStatus('loading');
+  await loadFromCloud();
+  appReady = true;
+  const elAtivos = document.getElementById('metaAtivos');
+  if (elAtivos) elAtivos.value = S.ativos || 0;
+  renderDashboard();
+  renderOrcamento();
+  renderDividas();
+  calcJuros();
+}
+initApp();
+</script>
+</body>
+</html>
