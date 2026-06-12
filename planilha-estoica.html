@@ -1090,6 +1090,7 @@ function renderMetas() {
 // INICIALIZAÇÃO
 // ══════════════════════════════════════════════════
 async function initApp() {
+  appReady = false;
   setSyncStatus('loading');
   await loadFromCloud();
   appReady = true;
@@ -1101,6 +1102,21 @@ async function initApp() {
   calcJuros();
 }
 initApp();
+
+// ══════════════════════════════════════════════════
+// REALTIME
+// ══════════════════════════════════════════════════
+db.channel('planilha_realtime')
+  .on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'planilha_dados', filter: 'id=eq.1' },
+    (payload) => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        initApp();
+      }
+    }
+  )
+  .subscribe();
 </script>
 </body>
 </html>
