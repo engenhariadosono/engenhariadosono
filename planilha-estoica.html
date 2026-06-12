@@ -384,15 +384,14 @@ function setSyncStatus(status) {
   const lbl = document.getElementById('syncLabel');
   if (!dot || !lbl) return;
   const map = {
-    loading: ['#c9a84c', 'Carregando da Nuvem...', '0 0 0 3px rgba(201,168,76,0.25)'],
-    saving:  ['#c9a84c', 'salvando...', '0 0 0 3px rgba(201,168,76,0.25)'],
-    ok:      ['#32d74b', 'sincronizado', 'none'],
-    error:   ['#ff453a', 'erro — usando cache', 'none'],
+    saving: ['#c9a84c', 'salvando...', '0 0 0 3px rgba(201,168,76,0.25)'],
+    ok:     ['#32d74b', 'sincronizado', 'none'],
+    error:  ['#ff453a', 'erro — usando cache', 'none'],
   };
   const [color, label, shadow] = map[status] || ['#636366', 'local', 'none'];
-  dot.style.background = color;
-  dot.style.boxShadow  = shadow;
-  lbl.textContent      = label;
+  dot.style.background   = color;
+  dot.style.boxShadow    = shadow;
+  lbl.textContent        = label;
 }
 
 async function syncToCloud() {
@@ -400,7 +399,7 @@ async function syncToCloud() {
   try {
     const { error } = await db
       .from('planilha_dados')
-      .upsert({ id: 1, conteudo_json: S, updated_at: new Date().toISOString() });
+      .upsert({ id: 1, conteudo_json: S });
     if (error) throw error;
     setSyncStatus('ok');
   } catch (err) {
@@ -410,6 +409,7 @@ async function syncToCloud() {
 }
 
 async function loadFromCloud() {
+  setSyncStatus('saving');
   try {
     const { data, error } = await db
       .from('planilha_dados')
@@ -421,24 +421,80 @@ async function loadFromCloud() {
     if (data?.conteudo_json && Object.keys(data.conteudo_json).length > 0) {
       Object.assign(S, data.conteudo_json);
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
-    } else {
-      // Sem dados na nuvem: usar cache local como fallback
-      try { const d = JSON.parse(localStorage.getItem(STORAGE_KEY)); if (d) Object.assign(S, d); } catch(e) {}
+      const elAtivos = document.getElementById('metaAtivos');
+      if (elAtivos) elAtivos.value = S.ativos || 0;
+      renderDashboard();
+      renderOrcamento();
+      renderDividas();
+      calcJuros();
     }
+    setSyncStatus('ok');
   } catch (err) {
     console.error('[Supabase] Erro ao carregar:', err);
-    // Fallback: cache local para não deixar o usuário sem dados
-    try { const d = JSON.parse(localStorage.getItem(STORAGE_KEY)); if (d) Object.assign(S, d); } catch(e) {}
     setSyncStatus('error');
   }
 }
+
+// Sincronização silenciosa — não altera o indicador visual
+async function silentSync() {
+  try {
+    const { data, error } = await db
+      .from('planilha_dados')
+      .select('conteudo_json')
+      .eq('id', 1)
+      .single();
+    if (error || !data?.conteudo_json) return;
+    if (Object.keys(data.conteudo_json).length === 0) return;
+    Object.assign(S, data.conteudo_json);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
+    const elAtivos = document.getElementById('metaAtivos');
+    if (elAtivos) elAtivos.value = S.ativos || 0;
+    renderDashboard();
+    renderOrcamento();
+    renderDividas();
+    calcJuros();
+  } catch(e) {}
+}
+
+// Mecanismo 1: ao voltar para a aba do PC, busca dados atualizados instantaneamente
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') silentSync();
+});
+
+// Mecanismo 2: polling a cada 20 segundos enquanto a aba estiver visível
+setInterval(() => {
+  if (document.visibilityState === 'visible') silentSync();
+}, 20000);
+
+// Mecanismo 3: Supabase Realtime — atualização instantânea se habilitado no painel
+db.channel('planilha_realtime')
+  .on('postgres_changes', {
+    event: 'UPDATE',
+    schema: 'public',
+    table: 'planilha_dados',
+    filter: 'id=eq.1'
+  }, payload => {
+    if (!payload.new?.conteudo_json) return;
+    Object.assign(S, payload.new.conteudo_json);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
+    const elAtivos = document.getElementById('metaAtivos');
+    if (elAtivos) elAtivos.value = S.ativos || 0;
+    renderDashboard();
+    renderOrcamento();
+    renderDividas();
+    calcJuros();
+    setSyncStatus('ok');
+  })
+  .subscribe();
 
 // ══════════════════════════════════════════════════
 // ESTADO
 // ══════════════════════════════════════════════════
 const STORAGE_KEY = 'planilha_estoica_v2';
-let appReady = false;
 let S = { receitas: [], despesas: [], dividas: [], strategy: 'avalanche', ativos: 0 };
+
+// Pintura imediata via cache local (zero delay)
+try { const d = JSON.parse(localStorage.getItem(STORAGE_KEY)); if (d) Object.assign(S, d); } catch(e) {}
 
 // Debounce: localStorage imediato, Supabase após 600ms de inatividade
 let _saveTimer = null;
@@ -538,7 +594,6 @@ function removeDespesa(id) { S.despesas = S.despesas.filter(d => d.id !== id); s
 const CAT_COLORS = { 'Moradia':'#0a84ff', 'Alimentação':'#32d74b', 'Transporte':'#ff9f0a', 'Saúde':'#ff453a', 'Educação':'#bf5af2', 'Lazer':'#ff2d55', 'Investimentos':'#c9a84c', 'Outros':'#636366' };
 
 function renderOrcamento() {
-  if (!appReady) return;
   // Receitas
   const br = document.getElementById('bodyReceitas');
   br.innerHTML = S.receitas.length === 0
@@ -676,7 +731,6 @@ function calcPayoff(dividas, extra, strategy) {
 }
 
 function renderDividas() {
-  if (!appReady) return;
   const extra = parseFloat(document.getElementById('extraPayment')?.value) || 0;
   const isl = S.strategy === 'avalanche';
 
@@ -784,7 +838,6 @@ function projCompound(P, PMT, rAnual, anos) {
 }
 
 function calcJuros() {
-  if (!appReady) return;
   const P    = parseFloat(document.getElementById('jCapital').value) || 0;
   const PMT  = parseFloat(document.getElementById('jAporte').value)  || 0;
   const taxa = parseFloat(document.getElementById('jTaxa').value)    || 0;
@@ -900,7 +953,6 @@ function renderJurosTable(data) {
 // DASHBOARD
 // ══════════════════════════════════════════════════
 function renderDashboard() {
-  if (!appReady) return;
   const renda = totalRec(), desp = totalDesp(), saldo = saldoMes(), taxa = taxaPoupa();
   const totDiv = totalDiv(), patLiq = patriLiq();
 
@@ -988,7 +1040,6 @@ function renderMiniChart(data, elId) {
 // METAS FIRE
 // ══════════════════════════════════════════════════
 function renderMetas() {
-  if (!appReady) return;
   S.ativos = parseFloat(document.getElementById('metaAtivos')?.value) || 0;
   save();
   const desp   = totalDesp();
@@ -1089,34 +1140,13 @@ function renderMetas() {
 // ══════════════════════════════════════════════════
 // INICIALIZAÇÃO
 // ══════════════════════════════════════════════════
-async function initApp() {
-  appReady = false;
-  setSyncStatus('loading');
-  await loadFromCloud();
-  appReady = true;
-  const elAtivos = document.getElementById('metaAtivos');
-  if (elAtivos) elAtivos.value = S.ativos || 0;
-  renderDashboard();
-  renderOrcamento();
-  renderDividas();
-  calcJuros();
-}
-initApp();
-
-// ══════════════════════════════════════════════════
-// REALTIME
-// ══════════════════════════════════════════════════
-db.channel('planilha_realtime')
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'planilha_dados', filter: 'id=eq.1' },
-    (payload) => {
-      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-        initApp();
-      }
-    }
-  )
-  .subscribe();
+if (document.getElementById('metaAtivos')) document.getElementById('metaAtivos').value = S.ativos || 0;
+renderDashboard();
+renderOrcamento();
+renderDividas();
+calcJuros();
+// Hidratação assíncrona da nuvem (sobrescreve cache local se houver dados mais recentes)
+loadFromCloud();
 </script>
 </body>
 </html>
