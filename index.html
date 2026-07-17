@@ -177,9 +177,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, .nav-tab:focus-
 /* NEW ROW */
 @keyframes rowIn { from { background: rgba(201,168,76,0.14); } to { background: transparent; } }
 .row-new td { animation: rowIn 1.1s ease; }
+
+/* BACKGROUND CANVAS */
+#bgCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: block; }
+.nav-header, .main { position: relative; z-index: 1; }
+
+/* GENIE */
+.genie-card { background: linear-gradient(135deg, rgba(201,168,76,0.06), rgba(201,168,76,0.01)); border: 1px solid rgba(201,168,76,0.16); }
+.genie-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.genie-icon { font-size: 28px; line-height: 1; filter: drop-shadow(0 0 6px rgba(201,168,76,0.4)); }
+.genie-title { font-size: 14px; font-weight: 800; }
+.genie-sub { font-size: 11px; color: var(--text3); }
+.genie-item { background: var(--surface2); border-radius: 8px; padding: 12px 14px; border-left: 3px solid var(--gold); }
+.genie-item-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.genie-item-text { font-size: 12px; color: var(--text2); line-height: 1.6; }
 </style>
 </head>
 <body>
+<canvas id="bgCanvas" aria-hidden="true"></canvas>
 
 <!-- ═══ NAVIGATION ═══ -->
 <header class="nav-header">
@@ -219,10 +234,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, .nav-tab:focus-
       <div id="dashHealth"></div>
     </div>
   </div>
-  <div class="card">
+  <div class="card" style="margin-bottom:16px">
     <div class="card-title">Projeção do Patrimônio — 10 anos (taxa 12% a.a.)</div>
     <div class="chart-wrap" id="dashProjectionChart"></div>
   </div>
+  <div class="card genie-card" id="genieBox"></div>
 </section>
 
 <!-- ══════════════════════════════════════════
@@ -394,6 +410,71 @@ button:focus-visible, input:focus-visible, select:focus-visible, .nav-tab:focus-
 </main>
 
 <script>
+// ══════════════════════════════════════════════════
+// FUNDO INTERATIVO — partículas douradas sutis
+// ══════════════════════════════════════════════════
+(function initBackground() {
+  const canvas = document.getElementById('bgCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, H, particles = [];
+  const mouse = { x: -9999, y: -9999 };
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    const count = Math.min(70, Math.max(24, Math.floor((W * H) / 22000)));
+    particles = Array.from({ length: count }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15,
+      r: Math.random() * 1.4 + 0.6,
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      const dx = p.x - mouse.x, dy = p.y - mouse.y;
+      const near = (dx * dx + dy * dy) < 19600; // 140px
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, near ? p.r * 1.8 : p.r, 0, Math.PI * 2);
+      ctx.fillStyle = near ? 'rgba(201,168,76,0.55)' : 'rgba(201,168,76,0.20)';
+      ctx.fill();
+    });
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const a = particles[i], b = particles[j];
+        const dx = a.x - b.x, dy = a.y - b.y, d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 110) {
+          ctx.strokeStyle = `rgba(201,168,76,${0.10 * (1 - d / 110)})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function tick() {
+    if (document.visibilityState !== 'visible') { setTimeout(tick, 500); return; }
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+    });
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  window.addEventListener('resize', resize);
+  if (!reducedMotion) {
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    window.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+  }
+  resize();
+  if (reducedMotion) draw(); else tick();
+})();
+
 // ══════════════════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════════════════
@@ -1129,6 +1210,108 @@ function renderDashboard() {
   const aporte = Math.max(0, saldo);
   const data10 = projCompound(S.ativos||0, aporte, 12, 10);
   renderMiniChart(data10, 'dashProjectionChart');
+
+  renderGenie();
+}
+
+// ══════════════════════════════════════════════════
+// O GÊNIO ESTOICO — motor de regras determinístico
+// Cruza receitas, despesas, dívidas e ativos para gerar
+// diagnósticos específicos, calculados a partir dos dados reais.
+// ══════════════════════════════════════════════════
+const CAT_LIMITS = { 'Moradia':0.30, 'Alimentação':0.15, 'Transporte':0.15, 'Lazer':0.10, 'Outros':0.08 };
+const RETORNO_MERCADO_AA = 12; // % a.a. — mesma taxa usada na projeção do app
+
+function genieInsights() {
+  if (!S.receitas.length && !S.despesas.length && !S.dividas.length) {
+    return [{ icon:'🧞', color:'var(--gold)', title:'Aguardando seus dados',
+      text:'Cadastre receitas, despesas e dívidas nas outras abas. Assim que houver números reais, o Gênio cruza tudo e aponta exatamente onde agir — sem achismo.' }];
+  }
+
+  const renda = totalRec(), desp = totalDesp(), saldo = saldoMes(), taxa = taxaPoupa();
+  const ativos = S.ativos || 0;
+  const byCat = {};
+  S.despesas.forEach(d => { byCat[d.cat] = (byCat[d.cat] || 0) + d.valor; });
+  const insights = [];
+
+  // 1) Dívida com juros acima do retorno de mercado — prioridade máxima
+  S.dividas.forEach(d => {
+    const taxaAnual = (Math.pow(1 + d.taxa / 100, 12) - 1) * 100;
+    if (taxaAnual > RETORNO_MERCADO_AA) {
+      const jurosMes = d.saldo * (d.taxa / 100);
+      insights.push({ icon:'🔥', color:'var(--red)', priority:4,
+        title:`Quite "${d.nome}" antes de investir mais`,
+        text:`Ela cobra ${fmtP(taxaAnual)} a.a. (${d.taxa}% a.m.), acima dos ${RETORNO_MERCADO_AA}% a.a. que seus investimentos rendem no plano. Só de juros, consome ${fmt(jurosMes)} este mês. Quitá-la é o retorno garantido mais alto disponível para você agora.` });
+    }
+  });
+
+  // 2) Categoria de despesa acima do teto saudável
+  Object.entries(byCat).forEach(([cat, val]) => {
+    const lim = CAT_LIMITS[cat];
+    if (lim && renda > 0 && (val / renda) > lim) {
+      const excesso = val - renda * lim;
+      insights.push({ icon:'✂️', color:'var(--gold)', priority:2,
+        title:`${cat} acima do teto saudável`,
+        text:`${cat} consome ${fmtP((val/renda)*100)} da renda (${fmt(val)}) — o teto recomendado é ${fmtP(lim*100)}. Cortando ${fmt(excesso)}/mês aqui, esse valor vira poupança imediatamente.` });
+    }
+  });
+
+  // 3) Reserva de emergência incompleta
+  const metaRes = desp * 6;
+  if (metaRes > 0 && ativos < metaRes) {
+    const falta = metaRes - ativos;
+    const meses = saldo > 0 ? Math.ceil(falta / saldo) : null;
+    insights.push({ icon:'🛡️', color:'var(--blue)', priority: S.dividas.length ? 1 : 3,
+      title:'Reserva de emergência incompleta',
+      text:`Faltam ${fmt(falta)} para cobrir 6 meses de despesas (${fmt(metaRes)}).${meses ? ` No ritmo atual de poupança, isso leva ${meses} ${meses===1?'mês':'meses'}.` : ' Gere saldo positivo no mês para começar a preenchê-la.'}` });
+  }
+
+  // 4) Taxa de poupança abaixo da meta estoica de 20%
+  if (renda > 0 && taxa < 20) {
+    const gap = renda * 0.2 - Math.max(0, saldo);
+    insights.push({ icon:'📉', color:'var(--red)', priority:2,
+      title:'Taxa de poupança abaixo da meta',
+      text:`Você poupa ${fmtP(Math.max(0,taxa))} da renda; a meta é 20%. Faltam ${fmt(Math.max(0,gap))}/mês — o equivalente a redirecionar esse valor de despesas com Desejos para investimento.` });
+  }
+
+  // 5) Saldo positivo ainda não formalmente alocado em investimentos
+  if (saldo > 0) {
+    const naoInvestido = Math.max(0, saldo - (byCat['Investimentos'] || 0));
+    if (naoInvestido > 50) {
+      const finalVal = projCompound(0, naoInvestido, RETORNO_MERCADO_AA, 10).at(-1).balance;
+      insights.push({ icon:'⚙️', color:'var(--green)', priority:1,
+        title:'Capital parado perdendo tempo',
+        text:`${fmt(naoInvestido)}/mês do seu saldo ainda não está alocado em Investimentos. Aportado a ${RETORNO_MERCADO_AA}% a.a., isso viraria ${fmt(finalVal)} em 10 anos — puro efeito do tempo, sem esforço extra.` });
+    }
+  }
+
+  insights.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  if (!insights.length) {
+    insights.push({ icon:'⚡', color:'var(--green)', priority:0, title:'Nenhum desequilíbrio crítico',
+      text:'Seus números não mostram nenhum ponto crítico agora. Continue disciplinado — a virtude é hábito, não evento.' });
+  }
+  return insights.slice(0, 5);
+}
+
+function renderGenie() {
+  const box = document.getElementById('genieBox');
+  if (!box) return;
+  const insights = genieInsights();
+  box.innerHTML = `
+    <div class="genie-head">
+      <div class="genie-icon">🧞</div>
+      <div>
+        <div class="genie-title">O Gênio Estoico</div>
+        <div class="genie-sub">Cruza todos os seus dados e aponta, com precisão, onde agir agora</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${insights.map(i => `
+        <div class="genie-item" style="border-left-color:${i.color}">
+          <div class="genie-item-title" style="color:${i.color}">${i.icon} ${i.title}</div>
+          <div class="genie-item-text">${i.text}</div>
+        </div>`).join('')}
+    </div>`;
 }
 
 function renderMiniChart(data, elId) {
