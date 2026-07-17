@@ -155,6 +155,28 @@ select option { background: var(--surface2); }
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+
+/* FOCUS */
+button:focus-visible, input:focus-visible, select:focus-visible, .nav-tab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* TOAST */
+.toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; max-width: 340px; }
+.toast { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--text2); box-shadow: 0 8px 24px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 10px; animation: toastIn 0.25s ease; }
+.toast.success { border-color: rgba(50,215,75,0.3); }
+.toast.error { border-color: rgba(255,69,58,0.3); }
+.toast-msg { flex: 1; line-height: 1.4; }
+.toast-undo { background: none; border: none; color: var(--gold); font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap; padding: 2px; }
+.toast-undo:hover { text-decoration: underline; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(8px); } }
+
+/* INPUT ERROR */
+.input-error { border-color: var(--red) !important; animation: shake 0.35s; }
+@keyframes shake { 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
+
+/* NEW ROW */
+@keyframes rowIn { from { background: rgba(201,168,76,0.14); } to { background: transparent; } }
+.row-new td { animation: rowIn 1.1s ease; }
 </style>
 </head>
 <body>
@@ -170,7 +192,7 @@ select option { background: var(--surface2); }
     <button class="nav-tab" onclick="showSection('metas',this)">Metas FIRE</button>
   </nav>
   <div class="quote-ticker" id="quoteTicker"></div>
-  <div id="syncStatus" style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">
+  <div id="syncStatus" role="status" aria-live="polite" title="Clique para tentar sincronizar novamente" onclick="retrySync()" style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0;cursor:pointer">
     <span id="syncDot" style="width:7px;height:7px;border-radius:50%;background:var(--text3);transition:background 0.4s,box-shadow 0.4s"></span>
     <span id="syncLabel">local</span>
   </div>
@@ -215,8 +237,8 @@ select option { background: var(--surface2); }
     <div class="card">
       <div class="card-title">Receitas <span class="hl-green" id="lblTotalReceitas">R$ 0</span></div>
       <div class="form-row">
-        <div class="form-group"><label>Descrição</label><input type="text" id="recDesc" placeholder="Ex: Salário"></div>
-        <div class="form-group" style="max-width:140px"><label>Valor (R$)</label><input type="number" id="recVal" placeholder="0" min="0"></div>
+        <div class="form-group"><label for="recDesc">Descrição</label><input type="text" id="recDesc" placeholder="Ex: Salário" onkeydown="if(event.key==='Enter')addReceita()"></div>
+        <div class="form-group" style="max-width:140px"><label for="recVal">Valor (R$)</label><input type="number" id="recVal" placeholder="0" min="0" onkeydown="if(event.key==='Enter')addReceita()"></div>
         <div class="form-group" style="max-width:72px"><label>&nbsp;</label><button class="btn btn-primary btn-sm" onclick="addReceita()">+ Add</button></div>
       </div>
       <table class="data-table">
@@ -228,8 +250,8 @@ select option { background: var(--surface2); }
     <div class="card">
       <div class="card-title">Despesas <span class="hl-red" id="lblTotalDespesas">R$ 0</span></div>
       <div class="form-row">
-        <div class="form-group"><label>Descrição</label><input type="text" id="despDesc" placeholder="Ex: Aluguel"></div>
-        <div class="form-group" style="max-width:130px"><label>Categoria</label>
+        <div class="form-group"><label for="despDesc">Descrição</label><input type="text" id="despDesc" placeholder="Ex: Aluguel" onkeydown="if(event.key==='Enter')addDespesa()"></div>
+        <div class="form-group" style="max-width:130px"><label for="despCat">Categoria</label>
           <select id="despCat">
             <option value="Moradia">🏠 Moradia</option>
             <option value="Alimentação">🍽️ Alimentação</option>
@@ -241,7 +263,7 @@ select option { background: var(--surface2); }
             <option value="Outros">📦 Outros</option>
           </select>
         </div>
-        <div class="form-group" style="max-width:130px"><label>Valor (R$)</label><input type="number" id="despVal" placeholder="0" min="0"></div>
+        <div class="form-group" style="max-width:130px"><label for="despVal">Valor (R$)</label><input type="number" id="despVal" placeholder="0" min="0" onkeydown="if(event.key==='Enter')addDespesa()"></div>
         <div class="form-group" style="max-width:72px"><label>&nbsp;</label><button class="btn btn-primary btn-sm" onclick="addDespesa()">+ Add</button></div>
       </div>
       <table class="data-table">
@@ -270,10 +292,10 @@ select option { background: var(--surface2); }
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">Cadastrar Dívida</div>
     <div class="form-row">
-      <div class="form-group"><label>Nome</label><input type="text" id="divNome" placeholder="Ex: Cartão Visa"></div>
-      <div class="form-group" style="max-width:155px"><label>Saldo Devedor (R$)</label><input type="number" id="divSaldo" placeholder="0" min="0"></div>
-      <div class="form-group" style="max-width:155px"><label>Juros (% a.m.)</label><input type="number" id="divTaxa" placeholder="0.00" step="0.01" min="0"></div>
-      <div class="form-group" style="max-width:155px"><label>Parcela Mínima (R$)</label><input type="number" id="divParcela" placeholder="0" min="0"></div>
+      <div class="form-group"><label for="divNome">Nome</label><input type="text" id="divNome" placeholder="Ex: Cartão Visa" onkeydown="if(event.key==='Enter')addDivida()"></div>
+      <div class="form-group" style="max-width:155px"><label for="divSaldo">Saldo Devedor (R$)</label><input type="number" id="divSaldo" placeholder="0" min="0" onkeydown="if(event.key==='Enter')addDivida()"></div>
+      <div class="form-group" style="max-width:155px"><label for="divTaxa">Juros (% a.m.)</label><input type="number" id="divTaxa" placeholder="0.00" step="0.01" min="0" onkeydown="if(event.key==='Enter')addDivida()"></div>
+      <div class="form-group" style="max-width:155px"><label for="divParcela">Parcela Mínima (R$)</label><input type="number" id="divParcela" placeholder="0" min="0" onkeydown="if(event.key==='Enter')addDivida()"></div>
       <div class="form-group" style="max-width:100px"><label>&nbsp;</label><button class="btn btn-primary" onclick="addDivida()">+ Adicionar</button></div>
     </div>
   </div>
@@ -392,6 +414,11 @@ function setSyncStatus(status) {
   dot.style.background   = color;
   dot.style.boxShadow    = shadow;
   lbl.textContent        = label;
+}
+
+function retrySync() {
+  const lbl = document.getElementById('syncLabel');
+  if (lbl && lbl.textContent.includes('erro')) syncToCloud();
 }
 
 async function syncToCloud() {
@@ -513,6 +540,57 @@ const fmtP = v => (+v).toFixed(1) + '%';
 const fmtN = v => new Intl.NumberFormat('pt-BR').format(Math.round(v));
 
 // ══════════════════════════════════════════════════
+// FEEDBACK — TOASTS & VALIDAÇÃO
+// ══════════════════════════════════════════════════
+function toast(msg, type, actionLabel, actionFn) {
+  let c = document.getElementById('toastContainer');
+  if (!c) {
+    c = document.createElement('div');
+    c.id = 'toastContainer';
+    c.className = 'toast-container';
+    c.setAttribute('role', 'status');
+    c.setAttribute('aria-live', 'polite');
+    document.body.appendChild(c);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  const msgSpan = document.createElement('span');
+  msgSpan.className = 'toast-msg';
+  msgSpan.textContent = msg;
+  el.appendChild(msgSpan);
+  const dismiss = () => {
+    clearTimeout(timer);
+    el.style.animation = 'toastOut 0.2s ease forwards';
+    setTimeout(() => el.remove(), 200);
+  };
+  if (actionLabel && actionFn) {
+    const btn = document.createElement('button');
+    btn.className = 'toast-undo';
+    btn.type = 'button';
+    btn.textContent = actionLabel;
+    btn.onclick = () => { actionFn(); dismiss(); };
+    el.appendChild(btn);
+  }
+  c.appendChild(el);
+  const timer = setTimeout(dismiss, actionLabel ? 6000 : 3000);
+}
+
+function markInvalid(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('input-error');
+  el.focus();
+  setTimeout(() => el.classList.remove('input-error'), 500);
+}
+
+// IDs recém-adicionados recebem um destaque visual de 1.2s na próxima renderização
+const _recentIds = new Set();
+function markRecent(id) {
+  _recentIds.add(id);
+  setTimeout(() => _recentIds.delete(id), 1200);
+}
+
+// ══════════════════════════════════════════════════
 // FRASES ESTOICAS
 // ══════════════════════════════════════════════════
 const QUOTES = [
@@ -569,27 +647,57 @@ const patriLiq  = () => (S.ativos || 0) - totalDiv();
 // ORÇAMENTO
 // ══════════════════════════════════════════════════
 function addReceita() {
-  const desc = document.getElementById('recDesc').value.trim();
-  const val  = parseFloat(document.getElementById('recVal').value);
-  if (!desc || isNaN(val) || val <= 0) return;
-  S.receitas.push({ id: Date.now(), desc, valor: val });
-  document.getElementById('recDesc').value = '';
-  document.getElementById('recVal').value  = '';
+  const descEl = document.getElementById('recDesc');
+  const valEl  = document.getElementById('recVal');
+  const desc = descEl.value.trim();
+  const val  = parseFloat(valEl.value);
+  if (!desc) { markInvalid('recDesc'); toast('Informe uma descrição para a receita.', 'error'); return; }
+  if (isNaN(val) || val <= 0) { markInvalid('recVal'); toast('Informe um valor maior que zero.', 'error'); return; }
+  const id = Date.now();
+  S.receitas.push({ id, desc, valor: val });
+  markRecent(id);
+  descEl.value = ''; valEl.value = '';
   save(); renderOrcamento(); renderDashboard();
+  toast(`Receita "${desc}" adicionada.`, 'success');
+  descEl.focus();
 }
-function removeReceita(id) { S.receitas = S.receitas.filter(r => r.id !== id); save(); renderOrcamento(); renderDashboard(); }
+function removeReceita(id) {
+  const idx = S.receitas.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const [removed] = S.receitas.splice(idx, 1);
+  save(); renderOrcamento(); renderDashboard();
+  toast(`Receita "${removed.desc}" removida.`, '', 'Desfazer', () => {
+    S.receitas.splice(idx, 0, removed);
+    save(); renderOrcamento(); renderDashboard();
+  });
+}
 
 function addDespesa() {
-  const desc = document.getElementById('despDesc').value.trim();
+  const descEl = document.getElementById('despDesc');
   const cat  = document.getElementById('despCat').value;
-  const val  = parseFloat(document.getElementById('despVal').value);
-  if (!desc || isNaN(val) || val <= 0) return;
-  S.despesas.push({ id: Date.now(), desc, cat, valor: val });
-  document.getElementById('despDesc').value = '';
-  document.getElementById('despVal').value  = '';
+  const valEl = document.getElementById('despVal');
+  const desc = descEl.value.trim();
+  const val  = parseFloat(valEl.value);
+  if (!desc) { markInvalid('despDesc'); toast('Informe uma descrição para a despesa.', 'error'); return; }
+  if (isNaN(val) || val <= 0) { markInvalid('despVal'); toast('Informe um valor maior que zero.', 'error'); return; }
+  const id = Date.now();
+  S.despesas.push({ id, desc, cat, valor: val });
+  markRecent(id);
+  descEl.value = ''; valEl.value = '';
   save(); renderOrcamento(); renderDashboard();
+  toast(`Despesa "${desc}" adicionada.`, 'success');
+  descEl.focus();
 }
-function removeDespesa(id) { S.despesas = S.despesas.filter(d => d.id !== id); save(); renderOrcamento(); renderDashboard(); }
+function removeDespesa(id) {
+  const idx = S.despesas.findIndex(d => d.id === id);
+  if (idx === -1) return;
+  const [removed] = S.despesas.splice(idx, 1);
+  save(); renderOrcamento(); renderDashboard();
+  toast(`Despesa "${removed.desc}" removida.`, '', 'Desfazer', () => {
+    S.despesas.splice(idx, 0, removed);
+    save(); renderOrcamento(); renderDashboard();
+  });
+}
 
 const CAT_COLORS = { 'Moradia':'#0a84ff', 'Alimentação':'#32d74b', 'Transporte':'#ff9f0a', 'Saúde':'#ff453a', 'Educação':'#bf5af2', 'Lazer':'#ff2d55', 'Investimentos':'#c9a84c', 'Outros':'#636366' };
 
@@ -598,14 +706,14 @@ function renderOrcamento() {
   const br = document.getElementById('bodyReceitas');
   br.innerHTML = S.receitas.length === 0
     ? '<tr><td colspan="3"><div class="empty-state"><div class="icon">💵</div>Nenhuma receita adicionada</div></td></tr>'
-    : S.receitas.map(r => `<tr><td>${r.desc}</td><td class="num hl-green">${fmtD(r.valor)}</td><td><button class="btn btn-danger" onclick="removeReceita(${r.id})">×</button></td></tr>`).join('');
+    : S.receitas.map(r => `<tr${_recentIds.has(r.id)?' class="row-new"':''}><td>${r.desc}</td><td class="num hl-green">${fmtD(r.valor)}</td><td><button class="btn btn-danger" onclick="removeReceita(${r.id})" aria-label="Remover receita ${r.desc}">×</button></td></tr>`).join('');
   document.getElementById('lblTotalReceitas').textContent = fmt(totalRec());
 
   // Despesas
   const bd = document.getElementById('bodyDespesas');
   bd.innerHTML = S.despesas.length === 0
     ? '<tr><td colspan="4"><div class="empty-state"><div class="icon">📋</div>Nenhuma despesa adicionada</div></td></tr>'
-    : S.despesas.map(d => `<tr><td>${d.desc}</td><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:${CAT_COLORS[d.cat]||'#636366'};flex-shrink:0"></span>${d.cat}</span></td><td class="num hl-red">${fmtD(d.valor)}</td><td><button class="btn btn-danger" onclick="removeDespesa(${d.id})">×</button></td></tr>`).join('');
+    : S.despesas.map(d => `<tr${_recentIds.has(d.id)?' class="row-new"':''}><td>${d.desc}</td><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:${CAT_COLORS[d.cat]||'#636366'};flex-shrink:0"></span>${d.cat}</span></td><td class="num hl-red">${fmtD(d.valor)}</td><td><button class="btn btn-danger" onclick="removeDespesa(${d.id})" aria-label="Remover despesa ${d.desc}">×</button></td></tr>`).join('');
   document.getElementById('lblTotalDespesas').textContent = fmt(totalDesp());
 
   renderResumo5030();
@@ -679,15 +787,28 @@ function addDivida() {
   const saldo   = parseFloat(document.getElementById('divSaldo').value);
   const taxa    = parseFloat(document.getElementById('divTaxa').value);
   const parcela = parseFloat(document.getElementById('divParcela').value);
-  if (!nome || [saldo,taxa,parcela].some(v => isNaN(v) || v < 0) || saldo <= 0 || parcela <= 0) {
-    alert('Preencha todos os campos corretamente. Saldo e parcela devem ser maiores que zero.');
-    return;
-  }
-  S.dividas.push({ id: Date.now(), nome, saldo, taxa, parcela });
-  ['divNome','divSaldo','divTaxa','divParcela'].forEach(id => { document.getElementById(id).value = ''; });
+  if (!nome) { markInvalid('divNome'); toast('Informe o nome da dívida.', 'error'); return; }
+  if (isNaN(saldo) || saldo <= 0) { markInvalid('divSaldo'); toast('Saldo devedor deve ser maior que zero.', 'error'); return; }
+  if (isNaN(taxa) || taxa < 0) { markInvalid('divTaxa'); toast('Informe uma taxa de juros válida.', 'error'); return; }
+  if (isNaN(parcela) || parcela <= 0) { markInvalid('divParcela'); toast('Parcela mínima deve ser maior que zero.', 'error'); return; }
+  const id = Date.now();
+  S.dividas.push({ id, nome, saldo, taxa, parcela });
+  markRecent(id);
+  ['divNome','divSaldo','divTaxa','divParcela'].forEach(fid => { document.getElementById(fid).value = ''; });
   save(); renderDividas();
+  toast(`Dívida "${nome}" cadastrada.`, 'success');
+  document.getElementById('divNome').focus();
 }
-function removeDivida(id) { S.dividas = S.dividas.filter(d => d.id !== id); save(); renderDividas(); }
+function removeDivida(id) {
+  const idx = S.dividas.findIndex(d => d.id === id);
+  if (idx === -1) return;
+  const [removed] = S.dividas.splice(idx, 1);
+  save(); renderDividas();
+  toast(`Dívida "${removed.nome}" removida.`, '', 'Desfazer', () => {
+    S.dividas.splice(idx, 0, removed);
+    save(); renderDividas();
+  });
+}
 
 function setStrategy(s) {
   S.strategy = s;
@@ -745,12 +866,12 @@ function renderDividas() {
   } else {
     const sorted = [...S.dividas].sort((a, b) => isl ? b.taxa - a.taxa : a.saldo - b.saldo);
     bd.innerHTML = sorted.map((d, i) => `
-      <tr>
+      <tr${_recentIds.has(d.id)?' class="row-new"':''}>
         <td>${i===0?'<span class="badge badge-red" style="margin-right:5px">FOCO</span>':''}${d.nome}</td>
         <td class="num">${fmt(d.saldo)}</td>
         <td class="num" style="color:var(--red)">${d.taxa}%</td>
         <td class="num">${fmt(d.parcela)}</td>
-        <td><button class="btn btn-danger" onclick="removeDivida(${d.id})">×</button></td>
+        <td><button class="btn btn-danger" onclick="removeDivida(${d.id})" aria-label="Remover dívida ${d.nome}">×</button></td>
       </tr>`).join('');
   }
 
